@@ -32,7 +32,7 @@ export default function HomePage() {
               </p>
 
               <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-                <Link href="/scan/new">
+                <Link href="/login">
                   <Button size="lg" className="gap-2">
                     Scan Your App
                     <ArrowRight className="size-4" />
