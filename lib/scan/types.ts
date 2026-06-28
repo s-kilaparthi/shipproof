@@ -1,4 +1,4 @@
-import type { Pillar } from "@/types";
+import type { FixStep, Pillar } from "@/types";
 
 export type Confidence = "high" | "medium" | "low";
 
@@ -10,6 +10,8 @@ export interface ScanIssue {
   line_number: number | null;
   description: string;
   fix_prompt: string;
+  is_multi_step?: boolean;
+  fix_steps?: FixStep[] | null;
   confidence?: Confidence;
   evidence?: string | null;
 }

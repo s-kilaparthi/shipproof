@@ -4,6 +4,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
 import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
+import { parseFixPrompt } from "@/lib/scan/fix-parser";
 import { fetchTargetedFiles } from "@/lib/scan/github-files";
 import { calculateHealthScores } from "@/lib/scan/health-score";
 import type { Tool } from "@/types";
@@ -79,18 +80,24 @@ export async function POST(request: Request) {
     await supabase.from("scan_results").delete().eq("scan_id", scan.id);
 
     if (issues.length > 0) {
-      const rows = issues.map((issue) => ({
-        scan_id: scan.id,
-        severity: issue.severity,
-        pillar: issue.pillar,
-        issue_name: issue.issue_name,
-        file_path: issue.file_path,
-        line_number: issue.line_number,
-        description: issue.description,
-        fix_prompt: issue.fix_prompt,
-        confidence: issue.confidence ?? "medium",
-        evidence: issue.evidence ?? null,
-      }));
+      const rows = issues.map((issue) => {
+        const { isMultiStep, steps } = parseFixPrompt(issue.fix_prompt);
+
+        return {
+          scan_id: scan.id,
+          severity: issue.severity,
+          pillar: issue.pillar,
+          issue_name: issue.issue_name,
+          file_path: issue.file_path,
+          line_number: issue.line_number,
+          description: issue.description,
+          fix_prompt: issue.fix_prompt,
+          is_multi_step: isMultiStep,
+          fix_steps: isMultiStep ? steps : null,
+          confidence: issue.confidence ?? "medium",
+          evidence: issue.evidence ?? null,
+        };
+      });
 
       const { error: insertError } = await supabase
         .from("scan_results")

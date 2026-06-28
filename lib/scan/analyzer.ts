@@ -19,10 +19,34 @@ RULES:
 - Only report issues you can see EVIDENCE of in the actual code
 - Never invent issues
 - Reference exact file names and function names from the code
-- Be concise: description max 2 sentences, fix_prompt max 3 sentences
+- Be concise: description max 2 sentences
 - Maximum 12 audit issues + exactly 3 threat scenarios = 15 total
+- Respond ONLY with a raw JSON array. No markdown, no explanation, no code fences. Just [ ... ]
+
+CRITICAL RULE FOR fix_prompt:
+Every fix_prompt must be COMPLETE — it must fix the issue entirely with no hanging follow-up tasks left for the user.
+
+If fixing an issue requires changes in multiple places (example: adding auth to backend AND updating frontend to send auth headers), include ALL steps in one fix_prompt.
+
+Format multi-step fixes like this:
+'STEP 1 — backend/main.py: [exact instruction for Cursor]
+
+STEP 2 — frontend/src/Students.jsx: [exact instruction for Cursor after Step 1 is done]'
+
+Rules for fix_prompt:
+- If the fix only touches one file: write normally, no steps
+- If the fix touches 2+ files: use STEP 1, STEP 2 format
+- Never write a fix that breaks something else
+- Always include the frontend fix if backend auth changes
+- Always include environment variable updates if adding secrets
+- Maximum 4 steps per fix
+- Each step must name the exact file
 - fix_prompt must name the exact file, exact library, exact method
-- Respond ONLY with a raw JSON array. No markdown, no explanation, no code fences. Just [ ... ]`;
+
+Example of a correct multi-step fix_prompt:
+'STEP 1 — backend/main.py: Add verify_institute_admin_or_teacher middleware to /create-student, /create-teacher, and /delete-user endpoints requiring Authorization: Bearer header.
+
+STEP 2 — frontend/src/Students.jsx and frontend/src/Teachers.jsx: Update all API calls to these endpoints to include Authorization: Bearer \${session.access_token} header from the Supabase session object.'`;
 
 function buildCombinedUserPrompt(
   discoveryResponse: string,
