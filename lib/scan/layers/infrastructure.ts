@@ -44,6 +44,14 @@ const SECURITY_HEADERS: {
   },
 ];
 
+export interface InfrastructureCheckResult {
+  issues: ScanIssue[];
+  skipped: boolean;
+  url?: string;
+  sslPassed?: boolean;
+  missingHeaders: string[];
+}
+
 function normalizeDomain(domain: string): string {
   let url = domain.trim();
   if (!url.startsWith("http")) url = `https://${url}`;
@@ -57,11 +65,14 @@ function buildHeaderFixPrompt(tool: Tool, header: string): string {
 export async function checkInfrastructure(
   domain: string | null | undefined,
   tool: Tool
-): Promise<ScanIssue[]> {
-  if (!domain?.trim()) return [];
+): Promise<InfrastructureCheckResult> {
+  if (!domain?.trim()) {
+    return { issues: [], skipped: true, missingHeaders: [] };
+  }
 
   const issues: ScanIssue[] = [];
   const url = normalizeDomain(domain);
+  const missingHeaders: string[] = [];
 
   try {
     const response = await fetch(url, {
@@ -72,6 +83,7 @@ export async function checkInfrastructure(
 
     for (const { header, severity, issueName, description } of SECURITY_HEADERS) {
       if (!response.headers.get(header)) {
+        missingHeaders.push(header);
         issues.push({
           pillar: "infrastructure",
           severity,
@@ -80,9 +92,18 @@ export async function checkInfrastructure(
           line_number: null,
           description,
           fix_prompt: buildHeaderFixPrompt(tool, header),
+          fix_type: "cursor",
         });
       }
     }
+
+    return {
+      issues,
+      skipped: false,
+      url,
+      sslPassed: true,
+      missingHeaders,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const isSslError =
@@ -99,9 +120,16 @@ export async function checkInfrastructure(
         line_number: null,
         description: `Could not establish a secure connection to ${url}. SSL certificate may be invalid or expired.`,
         fix_prompt: `Fix the SSL certificate for ${domain}. Ensure a valid TLS certificate is installed on your hosting provider and HTTPS is properly configured.`,
+        fix_type: "manual",
       });
     }
-  }
 
-  return issues;
+    return {
+      issues,
+      skipped: false,
+      url,
+      sslPassed: false,
+      missingHeaders,
+    };
+  }
 }

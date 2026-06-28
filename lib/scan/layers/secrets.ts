@@ -47,7 +47,10 @@ function buildSecretFixPrompt(tool: Tool, filePath: string): string {
   return `In ${filePath}, remove the hardcoded secret and move it to an environment variable. Update .env.example with the variable name only. In ${tool}, load it via process.env at runtime. Never commit real secrets.`;
 }
 
-export function scanSecrets(files: FetchedFile[], tool: Tool): ScanIssue[] {
+export function scanSecrets(
+  files: FetchedFile[],
+  tool: Tool
+): { issues: ScanIssue[]; scannedFileCount: number } {
   const priorityFiles = files.filter((f) => isPrioritySecretScanFile(f.path));
   const patternMatches = new Map<
     string,
@@ -75,6 +78,7 @@ export function scanSecrets(files: FetchedFile[], tool: Tool): ScanIssue[] {
           line_number: i + 1,
           description: `A potential ${name} was found hardcoded in ${file.path}:${i + 1}. This is a critical security risk.`,
           fix_prompt: buildSecretFixPrompt(tool, file.path),
+          fix_type: "cursor",
           confidence: "high",
           evidence: lines[i].trim().slice(0, 120),
         };
@@ -87,5 +91,8 @@ export function scanSecrets(files: FetchedFile[], tool: Tool): ScanIssue[] {
     }
   }
 
-  return Array.from(patternMatches.values()).map((m) => m.issue);
+  return {
+    issues: Array.from(patternMatches.values()).map((m) => m.issue),
+    scannedFileCount: priorityFiles.length,
+  };
 }

@@ -1,15 +1,30 @@
 "use client";
 
-import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Code,
+  Copy,
+  Database,
+  Settings,
+  Terminal,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatAllSteps } from "@/lib/scan/fix-parser";
+import { formatAllSteps, formatStepText } from "@/lib/scan/fix-parser";
+import {
+  getCopyButtonLabel,
+  getFixTypeBadgeClass,
+  getFixTypeBadgeLabel,
+  getMultiStepIntro,
+} from "@/lib/scan/fix-type-utils";
 import { getSeverityColor } from "@/lib/scan/health-score";
-import type { Confidence, ScanIssueRow, Tool } from "@/types";
+import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 
 interface IssueCardProps {
   issue: ScanIssueRow;
@@ -28,6 +43,32 @@ function confidenceBadgeClass(confidence?: Confidence): string {
   return "bg-blue-100 text-blue-700 border-blue-200";
 }
 
+function resolveFixType(issue: ScanIssueRow, step?: FixStep): FixType {
+  if (step?.fixType) return step.fixType;
+  return issue.fix_type ?? "cursor";
+}
+
+function FixTypeIcon({ fixType }: { fixType: FixType }) {
+  switch (fixType) {
+    case "sql":
+      return <Database className="size-4" />;
+    case "terminal":
+      return <Terminal className="size-4" />;
+    case "manual":
+      return <Settings className="size-4" />;
+    default:
+      return <Code className="size-4" />;
+  }
+}
+
+function FixTypeBadge({ fixType }: { fixType: FixType }) {
+  return (
+    <Badge variant="outline" className={getFixTypeBadgeClass(fixType)}>
+      {getFixTypeBadgeLabel(fixType)}
+    </Badge>
+  );
+}
+
 async function copyText(text: string, successMessage: string) {
   await navigator.clipboard.writeText(text);
   toast.success(successMessage);
@@ -42,10 +83,14 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
 
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
+  const singleFixType = resolveFixType(issue);
 
   const handleCopySingle = async () => {
     try {
-      await copyText(issue.fix_prompt, "Fix prompt copied to clipboard");
+      await copyText(
+        issue.fix_prompt,
+        `${getCopyButtonLabel(singleFixType, tool)} copied to clipboard`
+      );
       setCopiedSingle(true);
       setTimeout(() => setCopiedSingle(false), 2000);
     } catch {
@@ -53,12 +98,16 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
     }
   };
 
-  const handleCopyStep = async (stepNumber: number, text: string) => {
+  const handleCopyStep = async (step: FixStep) => {
+    const stepFixType = resolveFixType(issue, step);
     try {
-      await copyText(text, `Step ${stepNumber} copied to clipboard`);
-      setCopiedSteps((prev) => ({ ...prev, [stepNumber]: true }));
+      await copyText(
+        formatStepText(step),
+        `${getCopyButtonLabel(stepFixType, tool)} copied to clipboard`
+      );
+      setCopiedSteps((prev) => ({ ...prev, [step.stepNumber]: true }));
       setTimeout(
-        () => setCopiedSteps((prev) => ({ ...prev, [stepNumber]: false })),
+        () => setCopiedSteps((prev) => ({ ...prev, [step.stepNumber]: false })),
         2000
       );
     } catch {
@@ -150,13 +199,15 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
               {isMultiStep ? (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    This fix requires {steps.length} steps — paste each into{" "}
-                    {tool} in order
+                    {getMultiStepIntro(
+                      steps.map((step) => resolveFixType(issue, step)),
+                      tool
+                    )}
                   </p>
 
                   <div className="space-y-3">
                     {steps.map((step) => {
-                      const stepText = `STEP ${step.stepNumber} — ${step.filePath}: ${step.instruction}`;
+                      const stepFixType = resolveFixType(issue, step);
                       const stepCopied = copiedSteps[step.stepNumber];
 
                       return (
@@ -164,10 +215,11 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                           key={step.stepNumber}
                           className="rounded-lg border border-border bg-muted/20 p-4"
                         >
-                          <div className="mb-2 flex items-center gap-2">
+                          <div className="mb-2 flex flex-wrap items-center gap-2">
                             <Badge variant="secondary">
                               Step {step.stepNumber}
                             </Badge>
+                            <FixTypeBadge fixType={stepFixType} />
                             <span className="font-mono text-xs font-medium">
                               {step.filePath}
                             </span>
@@ -180,9 +232,7 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                             variant="outline"
                             size="sm"
                             className="mt-3 gap-2"
-                            onClick={() =>
-                              handleCopyStep(step.stepNumber, stepText)
-                            }
+                            onClick={() => handleCopyStep(step)}
                           >
                             {stepCopied ? (
                               <>
@@ -191,8 +241,8 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                               </>
                             ) : (
                               <>
-                                <Copy className="size-4" />
-                                Copy Step {step.stepNumber}
+                                <FixTypeIcon fixType={stepFixType} />
+                                {getCopyButtonLabel(stepFixType, tool)}
                               </>
                             )}
                           </Button>
@@ -227,9 +277,7 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                 </>
               ) : (
                 <>
-                  <p className="text-xs text-muted-foreground">
-                    Paste into {tool}
-                  </p>
+                  <FixTypeBadge fixType={singleFixType} />
                   <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
                     {issue.fix_prompt}
                   </pre>
@@ -247,8 +295,8 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                       </>
                     ) : (
                       <>
-                        <Copy className="size-4" />
-                        Copy Fix Prompt
+                        <FixTypeIcon fixType={singleFixType} />
+                        {getCopyButtonLabel(singleFixType, tool)}
                       </>
                     )}
                   </Button>

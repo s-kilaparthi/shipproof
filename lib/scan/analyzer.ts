@@ -9,6 +9,8 @@ import {
   filterByConfidence,
   normalizeConfidence,
 } from "./issue-utils";
+import { normalizeFixType } from "./fix-type-utils";
+import { calculateHealthScores } from "./health-score";
 import type { ScanEngineInput, ScanEngineResult, ScanIssue } from "./types";
 
 export type { ScanIssue, ScanEngineInput, ScanEngineResult };
@@ -41,6 +43,7 @@ Rules for fix_prompt:
 - Always include environment variable updates if adding secrets
 - Maximum 4 steps per fix
 - Each step must name the exact file
+- For mixed fix types use typed step headers, e.g. STEP 1 — SQL (Supabase): ... and STEP 2 — cursor (backend/main.py): ...
 - fix_prompt must name the exact file, exact library, exact method
 
 Example of a correct multi-step fix_prompt:
@@ -112,6 +115,18 @@ For each issue add:
 'confidence': 'medium' if you can reference the file/function,
 'confidence': 'low' if it is inferred
 
+Also add a fix_type field to each issue:
+- 'cursor' if the fix requires editing code files in Cursor/Lovable/Bolt/v0
+- 'sql' if the fix requires running SQL in Supabase dashboard or database
+- 'terminal' if the fix requires running a command in terminal (npm install, etc)
+- 'manual' if the fix requires manual action in a dashboard or settings page
+
+Examples:
+- Adding auth middleware → 'cursor'
+- Enabling RLS policies → 'sql'
+- Updating a package → 'terminal'
+- Enabling GitHub 2FA → 'manual'
+
 ## Return Format
 [
   {
@@ -122,6 +137,7 @@ For each issue add:
     "line_number": 42 or null,
     "description": "Max 2 sentences with specific code reference",
     "fix_prompt": "Paste into ${tool}: specific fix naming exact file and library",
+    "fix_type": "cursor|sql|terminal|manual",
     "confidence": "high|medium|low",
     "evidence": "exact quote from code or null"
   }
@@ -183,6 +199,7 @@ function mapRawIssues(raw: Record<string, unknown>[]): ScanIssue[] {
     line_number: typeof issue.line_number === "number" ? issue.line_number : null,
     description: String(issue.description ?? ""),
     fix_prompt: String(issue.fix_prompt ?? ""),
+    fix_type: normalizeFixType(issue.fix_type),
     confidence: normalizeConfidence(issue.confidence),
     evidence: issue.evidence ? String(issue.evidence) : null,
   }));
@@ -191,8 +208,13 @@ function mapRawIssues(raw: Record<string, unknown>[]): ScanIssue[] {
 export async function runCombinedAnalysis(
   discoveryResponse: string,
   codeMarkdown: string,
-  tool: Tool
+  tool: Tool,
+  fileCount: number
 ): Promise<ScanIssue[]> {
+  console.log(
+    `[scan/analyzer] Layer 4: Sending ${fileCount} files, ${codeMarkdown.length} chars to Claude`
+  );
+
   const userPrompt = buildCombinedUserPrompt(
     discoveryResponse,
     codeMarkdown,
@@ -209,18 +231,33 @@ export async function runCombinedAnalysis(
 
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
-      console.warn("[scan/analyzer] No text response from Claude");
+      console.warn("[scan/analyzer] Layer 4: No text response from Claude");
+      console.log("[scan/analyzer] Layer 4: Claude returned 0 raw issues");
+      console.log("[scan/analyzer] Layer 4: 0 issues passed confidence filter");
       return [];
     }
 
     const raw = extractJsonArray(textBlock.text);
-    if (raw.length === 0) {
-      console.warn("[scan/analyzer] Claude returned empty or unparseable JSON");
+    const mapped = mapRawIssues(raw);
+
+    console.log(
+      `[scan/analyzer] Layer 4: Claude returned ${mapped.length} raw issues`
+    );
+
+    if (mapped.length === 0) {
+      console.warn("[scan/analyzer] Layer 4: Claude returned empty or unparseable JSON");
     }
 
-    return mapRawIssues(raw);
+    const { issues: confidenceFiltered } = filterByConfidence(mapped);
+    console.log(
+      `[scan/analyzer] Layer 4: ${confidenceFiltered.length} issues passed confidence filter`
+    );
+
+    return confidenceFiltered;
   } catch (error) {
-    console.error("[scan/analyzer] Combined Claude analysis failed:", error);
+    console.error("[scan/analyzer] Layer 4: Combined Claude analysis failed:", error);
+    console.log("[scan/analyzer] Layer 4: Claude returned 0 raw issues");
+    console.log("[scan/analyzer] Layer 4: 0 issues passed confidence filter");
     return [];
   }
 }
@@ -239,36 +276,92 @@ export function normalizeIssues(issues: ScanIssue[], tool: Tool): ScanIssue[] {
 export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineResult> {
   const { files, tool, domain, discoveryResponse, codeMarkdown } = input;
 
-  console.log("[scan/analyzer] Layer 1: Secret scanning (priority files only)");
-  const secretIssues = scanSecrets(files, tool);
+  const { issues: secretIssues, scannedFileCount } = scanSecrets(files, tool);
+  console.log(
+    `[scan/analyzer] Layer 1: Scanning ${scannedFileCount} files for secrets`
+  );
+  if (secretIssues.length > 0) {
+    console.log(`[scan/analyzer] Layer 1: Found ${secretIssues.length} secrets`);
+  } else {
+    console.log("[scan/analyzer] Layer 1: No secrets found");
+  }
 
-  console.log("[scan/analyzer] Layer 2: Dependency audit");
-  const dependencyIssues = await auditDependencies(files);
+  const dependencyResult = await auditDependencies(files);
+  if (dependencyResult.skipped) {
+    console.log("[scan/analyzer] Layer 2: No dependency file found - skipping");
+  } else {
+    const depFileNames = dependencyResult.dependencyFiles.map((filePath) =>
+      filePath.endsWith("requirements.txt") ? "requirements.txt" : "package.json"
+    );
+    const uniqueDepFiles = Array.from(new Set(depFileNames)).join("/");
+    console.log(`[scan/analyzer] Layer 2: Found ${uniqueDepFiles}`);
+    console.log(
+      `[scan/analyzer] Layer 2: Checking ${dependencyResult.packageCount} packages against OSV.dev`
+    );
 
-  console.log("[scan/analyzer] Layer 3: Infrastructure check");
-  const infraIssues = await checkInfrastructure(domain, tool);
+    if (dependencyResult.osvFailed) {
+      console.log("[scan/analyzer] Layer 2: OSV.dev API failed - skipping");
+    } else if (dependencyResult.issues.length > 0) {
+      console.log(
+        `[scan/analyzer] Layer 2: Found ${dependencyResult.issues.length} vulnerabilities`
+      );
+    } else {
+      console.log("[scan/analyzer] Layer 2: No vulnerabilities found");
+    }
+  }
 
-  console.log("[scan/analyzer] Layer 4: Combined AI analysis (single call)");
+  const infraResult = await checkInfrastructure(domain, tool);
+  if (infraResult.skipped) {
+    console.log("[scan/analyzer] Layer 3: No domain provided - skipping");
+  } else {
+    console.log(`[scan/analyzer] Layer 3: Checking ${infraResult.url}`);
+    if (infraResult.sslPassed) {
+      console.log("[scan/analyzer] Layer 3: SSL check passed");
+    } else {
+      console.log("[scan/analyzer] Layer 3: SSL check failed");
+    }
+
+    if (infraResult.sslPassed) {
+      if (infraResult.missingHeaders.length > 0) {
+        console.log(
+          `[scan/analyzer] Layer 3: Missing headers: ${infraResult.missingHeaders.join(", ")}`
+        );
+      } else {
+        console.log("[scan/analyzer] Layer 3: All security headers present");
+      }
+    }
+  }
+
   const aiIssues = await runCombinedAnalysis(
     discoveryResponse,
     codeMarkdown,
-    tool
+    tool,
+    files.length
   );
 
   const normalized = normalizeIssues(
-    [...secretIssues, ...dependencyIssues, ...infraIssues, ...aiIssues],
+    [
+      ...secretIssues,
+      ...dependencyResult.issues,
+      ...infraResult.issues,
+      ...aiIssues,
+    ],
     tool
   );
 
   const { issues: deduped, removed: dedupRemoved } = deduplicateIssues(normalized);
-  if (dedupRemoved > 0) {
-    console.log(`[scan/analyzer] Deduplicated ${dedupRemoved} issues`);
-  }
+  console.log(`[scan/analyzer] Deduplicated ${dedupRemoved} issues`);
 
   const { issues: filtered, filteredLow } = filterByConfidence(deduped);
   if (filteredLow > 0) {
-    console.log(`[scan/analyzer] Filtered ${filteredLow} low-confidence issues`);
+    console.log(
+      `[scan/analyzer] Filtered ${filteredLow} low-confidence issues from non-AI layers`
+    );
   }
+
+  const pillarScores = calculateHealthScores(filtered);
+  console.log(`[scan/analyzer] Total issues saved: ${filtered.length}`);
+  console.log(`[scan/analyzer] Overall score: ${pillarScores.overall}`);
 
   return { issues: filtered };
 }

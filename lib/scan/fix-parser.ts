@@ -1,5 +1,7 @@
 import type { FixStep } from "@/types";
 
+import { parseStepHeader } from "./fix-type-utils";
+
 export function parseFixPrompt(fixPrompt: string): {
   isMultiStep: boolean;
   steps: FixStep[];
@@ -14,7 +16,8 @@ export function parseFixPrompt(fixPrompt: string): {
 
   const steps: FixStep[] = matches.map((match, index) => {
     const stepNumber = parseInt(match[1], 10);
-    const filePath = match[2].trim();
+    const headerLabel = match[2].trim();
+    const { filePath, fixType } = parseStepHeader(headerLabel);
     const instructionStart = (match.index ?? 0) + match[0].length;
     const instructionEnd =
       index + 1 < matches.length
@@ -22,7 +25,7 @@ export function parseFixPrompt(fixPrompt: string): {
         : fixPrompt.length;
     const instruction = fixPrompt.slice(instructionStart, instructionEnd).trim();
 
-    return { stepNumber, filePath, instruction };
+    return { stepNumber, filePath, instruction, fixType };
   });
 
   return { isMultiStep: true, steps, rawPrompt: fixPrompt };
@@ -30,9 +33,20 @@ export function parseFixPrompt(fixPrompt: string): {
 
 export function formatAllSteps(steps: FixStep[]): string {
   return steps
-    .map(
-      (step) =>
-        `STEP ${step.stepNumber} — ${step.filePath}: ${step.instruction}`
-    )
+    .map((step) => {
+      const typeLabel =
+        step.fixType && step.fixType !== "cursor"
+          ? `${step.fixType} (${step.filePath})`
+          : step.filePath;
+      return `STEP ${step.stepNumber} — ${typeLabel}: ${step.instruction}`;
+    })
     .join("\n\n");
+}
+
+export function formatStepText(step: FixStep): string {
+  const typeLabel =
+    step.fixType && step.fixType !== "cursor"
+      ? `${step.fixType} (${step.filePath})`
+      : step.filePath;
+  return `STEP ${step.stepNumber} — ${typeLabel}: ${step.instruction}`;
 }

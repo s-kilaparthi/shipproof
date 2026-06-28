@@ -48,6 +48,10 @@ export interface User {
   created_at: string;
 }
 
+export type Confidence = "high" | "medium" | "low";
+
+export type FixType = "cursor" | "sql" | "terminal" | "manual";
+
 export interface Issue {
   id?: string;
   title: string;
@@ -56,6 +60,7 @@ export interface Issue {
   file?: string;
   line?: number;
   fix_prompt?: string;
+  fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
   pillar?: Pillar;
@@ -65,6 +70,7 @@ export interface FixStep {
   stepNumber: number;
   filePath: string;
   instruction: string;
+  fixType?: FixType;
 }
 
 export interface ScanIssueRow {
@@ -77,6 +83,7 @@ export interface ScanIssueRow {
   line_number: number | null;
   description: string;
   fix_prompt: string;
+  fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
   confidence?: Confidence;
@@ -84,14 +91,13 @@ export interface ScanIssueRow {
   created_at: string;
 }
 
-export type Confidence = "high" | "medium" | "low";
-
 export interface ScanResult {
   id: string;
   scan_id: string;
   issues: Issue[];
   summary: string;
   fix_prompt?: string;
+  fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
   created_at: string;

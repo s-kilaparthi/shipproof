@@ -1,6 +1,7 @@
-import type { Confidence, FixStep, Pillar, PillarScores, ScanIssueRow } from "@/types";
+import type { Confidence, FixStep, FixType, Pillar, PillarScores, ScanIssueRow } from "@/types";
 import { calculateHealthScores } from "./health-score";
 import { parseFixPrompt } from "./fix-parser";
+import { normalizeFixType } from "./fix-type-utils";
 
 interface JsonbScanResult {
   issues?: Array<{
@@ -14,6 +15,7 @@ interface JsonbScanResult {
     line?: number;
     description: string;
     fix_prompt?: string;
+    fix_type?: FixType;
     is_multi_step?: boolean;
     fix_steps?: FixStep[] | null;
     confidence?: Confidence;
@@ -67,6 +69,11 @@ export function normalizeScanIssues(
         pillar: (row.pillar ?? "security") as Pillar,
         confidence: (row.confidence ?? "medium") as Confidence,
         evidence: row.evidence ?? null,
+        fix_type: normalizeFixType(
+          row.fix_type ??
+            fixMeta.fix_steps?.[0]?.fixType ??
+            (fixMeta.is_multi_step ? undefined : "cursor")
+        ),
         is_multi_step: fixMeta.is_multi_step,
         fix_steps: fixMeta.fix_steps,
       };
@@ -89,6 +96,7 @@ export function normalizeScanIssues(
         line_number: issue.line_number ?? issue.line ?? null,
         description: issue.description,
         fix_prompt: fixPrompt,
+        fix_type: normalizeFixType(issue.fix_type),
         is_multi_step: fixMeta.is_multi_step,
         fix_steps: fixMeta.fix_steps,
         confidence: issue.confidence ?? "medium",

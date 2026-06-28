@@ -82,6 +82,9 @@ export async function POST(request: Request) {
     if (issues.length > 0) {
       const rows = issues.map((issue) => {
         const { isMultiStep, steps } = parseFixPrompt(issue.fix_prompt);
+        const fixType =
+          issue.fix_type ??
+          (isMultiStep && steps[0]?.fixType ? steps[0].fixType : "cursor");
 
         return {
           scan_id: scan.id,
@@ -92,6 +95,7 @@ export async function POST(request: Request) {
           line_number: issue.line_number,
           description: issue.description,
           fix_prompt: issue.fix_prompt,
+          fix_type: fixType,
           is_multi_step: isMultiStep,
           fix_steps: isMultiStep ? steps : null,
           confidence: issue.confidence ?? "medium",

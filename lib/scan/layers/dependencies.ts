@@ -17,6 +17,14 @@ interface OsvQueryResult {
   vulns?: OsvVuln[];
 }
 
+export interface DependencyAuditResult {
+  issues: ScanIssue[];
+  dependencyFiles: string[];
+  packageCount: number;
+  osvFailed: boolean;
+  skipped: boolean;
+}
+
 function parsePackageJson(content: string): PackageEntry[] {
   try {
     const pkg = JSON.parse(content) as {
@@ -67,19 +75,30 @@ function mapOsvSeverity(severity?: string): ScanIssue["severity"] {
 
 export async function auditDependencies(
   files: FetchedFile[]
-): Promise<ScanIssue[]> {
+): Promise<DependencyAuditResult> {
+  const dependencyFiles: string[] = [];
   let packages: PackageEntry[] = [];
 
   for (const file of files) {
     if (file.path.endsWith("package.json")) {
+      dependencyFiles.push(file.path);
       packages = packages.concat(parsePackageJson(file.content));
     }
     if (file.path.endsWith("requirements.txt")) {
+      dependencyFiles.push(file.path);
       packages = packages.concat(parseRequirementsTxt(file.content));
     }
   }
 
-  if (packages.length === 0) return [];
+  if (packages.length === 0) {
+    return {
+      issues: [],
+      dependencyFiles,
+      packageCount: 0,
+      osvFailed: false,
+      skipped: true,
+    };
+  }
 
   try {
     const response = await fetch("https://api.osv.dev/v1/querybatch", {
@@ -94,7 +113,15 @@ export async function auditDependencies(
       signal: AbortSignal.timeout(10000),
     });
 
-    if (!response.ok) return [];
+    if (!response.ok) {
+      return {
+        issues: [],
+        dependencyFiles,
+        packageCount: packages.length,
+        osvFailed: true,
+        skipped: false,
+      };
+    }
 
     const data = (await response.json()) as { results?: OsvQueryResult[] };
     const issues: ScanIssue[] = [];
@@ -113,14 +140,27 @@ export async function auditDependencies(
           line_number: null,
           description: `${vuln.id ?? "CVE"}: ${vuln.summary ?? "Known vulnerability in this package version."}`,
           fix_prompt: `Update ${pkg.name} from ${pkg.version} to latest version. Run: ${pkg.ecosystem === "npm" ? `npm install ${pkg.name}@latest` : `pip install --upgrade ${pkg.name}`}`,
+          fix_type: "terminal",
           confidence: "high",
           evidence: null,
         });
       }
     });
 
-    return issues;
+    return {
+      issues,
+      dependencyFiles,
+      packageCount: packages.length,
+      osvFailed: false,
+      skipped: false,
+    };
   } catch {
-    return [];
+    return {
+      issues: [],
+      dependencyFiles,
+      packageCount: packages.length,
+      osvFailed: true,
+      skipped: false,
+    };
   }
 }
