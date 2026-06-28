@@ -1,26 +1,82 @@
 "use client";
 
-import type { Tool } from "@/types";
+import type { ComponentType } from "react";
+import { Box, Code2, Heart, Zap } from "lucide-react";
 
-const tools: Tool[] = ["Cursor", "Lovable", "Bolt", "V0"];
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { TOOL_OPTIONS, type Tool } from "@/types";
 
-export function ToolSelector() {
+const TOOL_ICONS: Record<Tool, ComponentType<{ className?: string }>> = {
+  Cursor: Code2,
+  Lovable: Heart,
+  Bolt: Zap,
+  V0: Box,
+};
+
+interface ToolSelectorProps {
+  selectedTool: Tool | null;
+  onSelect: (tool: Tool) => void;
+  onNext: () => void;
+  onBack: () => void;
+}
+
+export function ToolSelector({
+  selectedTool,
+  onSelect,
+  onNext,
+  onBack,
+}: ToolSelectorProps) {
   return (
-    <div className="rounded-lg border border-border bg-card p-6">
-      <h2 className="text-lg font-semibold">Select Tool</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        Which AI builder did you use to create your app?
-      </p>
-      <div className="mt-4 flex flex-wrap gap-2">
-        {tools.map((tool) => (
-          <span
-            key={tool}
-            className="rounded-md border border-border bg-muted px-3 py-1.5 text-sm"
-          >
-            {tool}
-          </span>
-        ))}
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Which tool did you build with?</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          We&apos;ll tailor fix prompts to your AI coding tool.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2">
+          {TOOL_OPTIONS.map((tool) => {
+            const Icon = TOOL_ICONS[tool.id];
+            const isSelected = selectedTool === tool.id;
+
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => onSelect(tool.id)}
+                className={cn(
+                  "flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all hover:bg-muted/50",
+                  isSelected
+                    ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                    : "border-border"
+                )}
+              >
+                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
+                  <Icon className="size-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-semibold">{tool.name}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {tool.description}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex justify-between pt-2">
+          <Button type="button" variant="outline" onClick={onBack}>
+            Back
+          </Button>
+          <Button type="button" onClick={onNext} disabled={!selectedTool}>
+            Next
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
