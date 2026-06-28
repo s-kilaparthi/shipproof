@@ -12,13 +12,17 @@ import type { GitHubRepo } from "@/types";
 
 interface RepoSelectorProps {
   selectedRepo: GitHubRepo | null;
+  domain: string;
   onSelect: (repo: GitHubRepo) => void;
+  onDomainChange: (domain: string) => void;
   onNext: () => void;
 }
 
 export function RepoSelector({
   selectedRepo,
+  domain,
   onSelect,
+  onDomainChange,
   onNext,
 }: RepoSelectorProps) {
   const [repos, setRepos] = useState<GitHubRepo[]>([]);
@@ -114,7 +118,7 @@ export function RepoSelector({
         )}
 
         {!loading && !error && filteredRepos.length > 0 && (
-          <div className="max-h-[420px] space-y-2 overflow-y-auto pr-1">
+          <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
             {filteredRepos.map((repo) => {
               const isSelected = selectedRepo?.id === repo.id;
 
@@ -154,6 +158,21 @@ export function RepoSelector({
             })}
           </div>
         )}
+
+        <div className="space-y-2 border-t border-border pt-4">
+          <label htmlFor="app-domain" className="text-sm font-medium">
+            App Domain (optional)
+          </label>
+          <Input
+            id="app-domain"
+            placeholder="https://yourapp.com"
+            value={domain}
+            onChange={(e) => onDomainChange(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Add your domain to check SSL and security headers
+          </p>
+        </div>
 
         <div className="flex justify-end pt-2">
           <Button type="button" onClick={onNext} disabled={!selectedRepo || loading}>

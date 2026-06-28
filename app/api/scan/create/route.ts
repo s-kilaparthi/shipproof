@@ -52,6 +52,10 @@ function validateCreateScanRequest(body: unknown): {
     repo_url: (data.repo_url as string).trim(),
     tool_selected: data.tool_selected as Tool,
     discovery_response: (data.discovery_response as string).trim(),
+    domain:
+      typeof data.domain === "string" && data.domain.trim().length > 0
+        ? data.domain.trim()
+        : undefined,
   };
 
   console.log("[scan/create] Validation passed:", {
@@ -145,6 +149,7 @@ export async function POST(request: Request) {
       repo_url: validation.data.repo_url,
       tool_selected: validation.data.tool_selected,
       discovery_response: validation.data.discovery_response,
+      domain: validation.data.domain ?? null,
       status: "scanning" as const,
     };
 
