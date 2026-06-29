@@ -18,9 +18,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "ShipProof — Security audits for AI-built apps",
+  title: "ShipProof — Production readiness for vibe-coded apps",
   description:
-    "Security audits, fix prompts and DevOps guidance for non-technical founders.",
+    "Scan your vibe-coded app for security vulnerabilities, performance issues, and DevOps gaps. Get copy-paste fix prompts for Cursor, Lovable, Bolt, and v0.",
 };
 
 export default function RootLayout({
