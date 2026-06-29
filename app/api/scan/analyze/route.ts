@@ -26,7 +26,12 @@ export async function POST(request: Request) {
       return auth.error;
     }
 
-    const body = (await request.json()) as { scan_id?: string };
+    const body = (await request.json()) as {
+      scan_id?: string;
+      use_cached_discovery?: boolean;
+      cached_discovery_response?: string;
+      cached_discovery_at?: string;
+    };
     scanId = body.scan_id;
 
     if (!scanId) {
@@ -44,6 +49,23 @@ export async function POST(request: Request) {
       return Response.json({ error: "Scan not found" }, { status: 404 });
     }
 
+    const useCachedDiscovery = body.use_cached_discovery === true;
+    const discoveryResponse = useCachedDiscovery
+      ? (body.cached_discovery_response ?? scan.discovery_response ?? "")
+      : (scan.discovery_response ?? "");
+
+    if (useCachedDiscovery) {
+      const cachedDate = body.cached_discovery_at ?? scan.created_at;
+      console.log(
+        `[scan/analyze] Using cached discovery from ${new Date(cachedDate).toISOString()}`
+      );
+
+      await supabase
+        .from("scans")
+        .update({ discovery_response: discoveryResponse })
+        .eq("id", scan.id);
+    }
+
     await supabase.from("scans").update({ status: "scanning" }).eq("id", scan.id);
 
     const githubToken = await getGitHubToken(supabase);
@@ -55,7 +77,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const parsed = parseDiscoveryResponse(scan.discovery_response ?? "");
+    const parsed = parseDiscoveryResponse(discoveryResponse);
     const tool = scan.tool_selected as Tool;
 
     const octokit = createOctokit(githubToken);
@@ -69,7 +91,7 @@ export async function POST(request: Request) {
         : "No code files could be fetched from the repository.";
 
     const { issues } = await runFullScan({
-      discoveryResponse: scan.discovery_response ?? "",
+      discoveryResponse,
       codeMarkdown,
       files,
       tool,
@@ -77,6 +99,9 @@ export async function POST(request: Request) {
     });
 
     const pillarScores = calculateHealthScores(issues);
+    const discoveryCachedAt = useCachedDiscovery
+      ? (body.cached_discovery_at ?? scan.created_at)
+      : new Date().toISOString();
 
     await supabase.from("scan_results").delete().eq("scan_id", scan.id);
 
@@ -130,6 +155,8 @@ export async function POST(request: Request) {
         completed_at: new Date().toISOString(),
         overall_score: pillarScores.overall,
         pillar_scores: pillarScores,
+        discovery_cached_at: discoveryCachedAt,
+        used_cached_discovery: useCachedDiscovery,
       })
       .eq("id", scan.id);
 
@@ -137,7 +164,12 @@ export async function POST(request: Request) {
       console.warn("[scan/analyze] Score columns may be missing:", updateError.message);
       await supabase
         .from("scans")
-        .update({ status: "completed", completed_at: new Date().toISOString() })
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+          discovery_cached_at: discoveryCachedAt,
+          used_cached_discovery: useCachedDiscovery,
+        })
         .eq("id", scan.id);
     }
 
@@ -147,6 +179,7 @@ export async function POST(request: Request) {
       issues_count: issues.length,
       overall_score: pillarScores.overall,
       pillar_scores: pillarScores,
+      used_cached_discovery: useCachedDiscovery,
     });
   } catch (error) {
     console.error("[scan/analyze] Unexpected error:", error);

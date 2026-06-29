@@ -111,6 +111,8 @@ export interface Scan {
   repo_name: string;
   tool_selected: Tool;
   discovery_response?: string;
+  discovery_cached_at?: string | null;
+  used_cached_discovery?: boolean | null;
   domain?: string | null;
   status: ScanStatus;
   overall_score?: number | null;
@@ -142,12 +144,20 @@ export interface CreateScanResponse {
   id: string;
 }
 
+export interface AnalyzeScanRequest {
+  scan_id: string;
+  use_cached_discovery?: boolean;
+  cached_discovery_response?: string;
+  cached_discovery_at?: string;
+}
+
 export interface AnalyzeScanResponse {
   success?: boolean;
   scan_id: string;
   issues_count?: number;
   overall_score?: number;
   pillar_scores?: PillarScores;
+  used_cached_discovery?: boolean;
 }
 
 export interface ScanHistoryResponse {
@@ -158,6 +168,46 @@ export interface ScanHistoryResponse {
   overallScore?: number | null;
 }
 
+export interface DiscoveryStatusResponse {
+  hasDiscovery: boolean;
+  discoveryAge: number;
+  discoveryAgeLabel?: string;
+  requiresFreshDiscovery: boolean;
+  lastScanId: string | null;
+  lastScanDate: string | null;
+  lastDiscoveryCachedAt?: string | null;
+  lastDiscoveryResponse: string | null;
+  tool: Tool | null;
+  overallScore: number | null;
+  issueCount: number;
+}
+
+export type RescanMode = "quick" | "full";
+
+export type WizardStepId = "repo" | "rescan-mode" | "tool" | "discovery";
+
+export type WizardStepDisplayId = WizardStepId | "scanning" | "report";
+
+export interface WizardStepConfig {
+  id: WizardStepDisplayId;
+  label: string;
+}
+
+export const FULL_SCAN_WIZARD_STEPS: WizardStepConfig[] = [
+  { id: "repo", label: "Select Repo" },
+  { id: "tool", label: "Select Tool" },
+  { id: "discovery", label: "Discovery" },
+  { id: "scanning", label: "Scanning" },
+  { id: "report", label: "Report" },
+];
+
+export const QUICK_SCAN_WIZARD_STEPS: WizardStepConfig[] = [
+  { id: "repo", label: "Select Repo" },
+  { id: "rescan-mode", label: "Scan Mode" },
+  { id: "scanning", label: "Scanning" },
+  { id: "report", label: "Report" },
+];
+
 export type ScanStep = 1 | 2 | 3 | 4;
 
 export interface ScanFormState {
@@ -166,6 +216,9 @@ export interface ScanFormState {
   discoveryResponse: string;
   domain: string;
   scanId: string | null;
+  rescanMode: RescanMode | null;
+  useCachedDiscovery: boolean;
+  cachedDiscoveryAt: string | null;
 }
 
 export const DISCOVERY_PROMPT = `You are a code documentation assistant. Do not evaluate or judge the code.

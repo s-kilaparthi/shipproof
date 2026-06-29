@@ -3,6 +3,13 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { ReportView } from "@/components/scan/report-view";
+import {
+  formatDiscoveryAge,
+  getDiscoveryAgeDays,
+  getDiscoveryReferenceDate,
+  isQuickRescanScan,
+  requiresFreshDiscovery,
+} from "@/lib/scan/discovery-cache";
 import { calculateHealthScores } from "@/lib/scan/health-score";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
@@ -59,6 +66,17 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     year: "numeric",
   });
 
+  const quickRescan =
+    scan.used_cached_discovery === true ||
+    (scan.used_cached_discovery == null && isQuickRescanScan(scan));
+  const discoveryRef = getDiscoveryReferenceDate(scan);
+  const canQuickRescan = !requiresFreshDiscovery(
+    getDiscoveryAgeDays(discoveryRef)
+  );
+  const discoveryAgeLabel = quickRescan
+    ? formatDiscoveryAge(discoveryRef, new Date(scan.created_at))
+    : undefined;
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
       <Link
@@ -76,6 +94,9 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         status={scan.status}
         pillarScores={pillarScores}
         issues={issues}
+        isQuickRescan={quickRescan}
+        discoveryAgeLabel={discoveryAgeLabel}
+        canQuickRescan={canQuickRescan}
       />
     </main>
   );

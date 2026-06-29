@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { ScanSearch } from "lucide-react";
+import { RefreshCw, ScanSearch, Zap } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  getDiscoveryAgeDays,
+  getDiscoveryReferenceDate,
+  requiresFreshDiscovery,
+} from "@/lib/scan/discovery-cache";
 import {
   calculateHealthScores,
   getHealthScoreBg,
@@ -67,6 +72,28 @@ export default async function DashboardPage() {
     return bLatest - aLatest;
   });
 
+  const repoDiscoveryStatus = new Map<
+    string,
+    { canQuickRescan: boolean }
+  >();
+
+  for (const [repoName, repoScans] of repoGroups) {
+    const latestCompleted = repoScans.find(
+      (s) => s.scan.status === "completed" && s.scan.discovery_response
+    );
+
+    if (!latestCompleted) {
+      repoDiscoveryStatus.set(repoName, { canQuickRescan: false });
+      continue;
+    }
+
+    const referenceDate = getDiscoveryReferenceDate(latestCompleted.scan);
+    const ageDays = getDiscoveryAgeDays(referenceDate);
+    repoDiscoveryStatus.set(repoName, {
+      canQuickRescan: !requiresFreshDiscovery(ageDays),
+    });
+  }
+
   return (
     <main className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <div className="flex items-center justify-between">
@@ -109,7 +136,15 @@ export default async function DashboardPage() {
                 </span>
               </div>
               <div className="grid gap-3">
-                {repoScans.map(({ scan, issues, pillarScores }) => (
+                {repoScans.map(({ scan, issues, pillarScores }) => {
+                  const canQuickRescan =
+                    repoDiscoveryStatus.get(repoName)?.canQuickRescan ?? false;
+                  const rescanMode = canQuickRescan ? "quick" : "full";
+                  const rescanLabel = canQuickRescan
+                    ? "Quick Rescan"
+                    : "Rescan";
+
+                  return (
                   <Card key={scan.id}>
                     <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
                       <div className="space-y-2">
@@ -152,7 +187,7 @@ export default async function DashboardPage() {
                         )}
                       </div>
 
-                      <div className="flex items-center gap-4">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
                         {scan.status === "completed" && (
                           <div
                             className={`rounded-lg border px-3 py-1.5 text-center ${getHealthScoreBg(pillarScores.overall)}`}
@@ -165,11 +200,25 @@ export default async function DashboardPage() {
                           </div>
                         )}
                         {scan.status === "completed" ? (
-                          <Link href={`/scan/${scan.id}/report`}>
-                            <Button variant="outline" size="sm">
-                              View Report
-                            </Button>
-                          </Link>
+                          <>
+                            <Link href={`/scan/${scan.id}/report`}>
+                              <Button variant="outline" size="sm">
+                                View Report
+                              </Button>
+                            </Link>
+                            <Link
+                              href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${rescanMode}`}
+                            >
+                              <Button variant="outline" size="sm" className="gap-1.5">
+                                {canQuickRescan ? (
+                                  <Zap className="size-3.5" />
+                                ) : (
+                                  <RefreshCw className="size-3.5" />
+                                )}
+                                {rescanLabel}
+                              </Button>
+                            </Link>
+                          </>
                         ) : (
                           <Button variant="outline" size="sm" disabled>
                             {scan.status === "scanning" ? "Scanning..." : "View Report"}
@@ -178,7 +227,8 @@ export default async function DashboardPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             </div>
           ))}

@@ -32,6 +32,10 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           )}
           <GitHubLoginButton />
+          <p className="mt-4 text-center text-xs text-muted-foreground">
+            🔒 Read-only access · We never store your code · Only security
+            issues are saved
+          </p>
         </div>
       </div>
     </main>

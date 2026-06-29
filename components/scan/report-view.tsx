@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Share2, ShieldCheck } from "lucide-react";
+import { Info, RefreshCw, Share2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 import { IssueCard } from "@/components/scan/issue-card";
@@ -32,6 +32,9 @@ interface ReportViewProps {
   status: string;
   pillarScores: PillarScores;
   issues: ScanIssueRow[];
+  isQuickRescan?: boolean;
+  discoveryAgeLabel?: string;
+  canQuickRescan?: boolean;
 }
 
 export function ReportView({
@@ -41,6 +44,9 @@ export function ReportView({
   status,
   pillarScores,
   issues,
+  isQuickRescan = false,
+  discoveryAgeLabel,
+  canQuickRescan = false,
 }: ReportViewProps) {
   const router = useRouter();
   const counts = countIssuesBySeverity(issues);
@@ -76,6 +82,23 @@ export function ReportView({
           <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">
             {repoName}
           </h1>
+          <div className="mt-2">
+            {isQuickRescan ? (
+              <Badge
+                variant="outline"
+                className="gap-1 bg-amber-50 text-amber-800 border-amber-200 text-xs font-normal"
+              >
+                ⚡ Quick Rescan · Discovery from {discoveryAgeLabel ?? "previous scan"}
+              </Badge>
+            ) : (
+              <Badge
+                variant="outline"
+                className="gap-1 bg-blue-50 text-blue-800 border-blue-200 text-xs font-normal"
+              >
+                🔄 Full Rescan · Fresh discovery
+              </Badge>
+            )}
+          </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             <span>Built with {tool}</span>
             <span>·</span>
@@ -182,7 +205,9 @@ export function ReportView({
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link href="/scan/new">
+          <Link
+            href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`}
+          >
             <Button variant="outline" className="w-full gap-2 sm:w-auto">
               <RefreshCw className="size-4" />
               Rescan
@@ -205,6 +230,14 @@ export function ReportView({
             Back to Dashboard
           </Button>
         </div>
+      </div>
+
+      <div className="mt-8 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+        <Info className="mt-0.5 size-4 shrink-0" />
+        <p>
+          ShipProof uses AI-powered analysis. Results may vary slightly between
+          scans. For best results, apply fix prompts before rescanning.
+        </p>
       </div>
     </div>
   );
