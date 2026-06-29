@@ -10,7 +10,11 @@ import {
   normalizeConfidence,
 } from "./issue-utils";
 import { normalizeFixType } from "./fix-type-utils";
-import { calculateHealthScores } from "./health-score";
+import {
+  calculateHealthScoreBreakdown,
+  calculateHealthScores,
+} from "./health-score";
+import { applySeverityRules } from "./severity-rules";
 import type { ScanEngineInput, ScanEngineResult, ScanIssue } from "./types";
 
 export type { ScanIssue, ScanEngineInput, ScanEngineResult };
@@ -205,6 +209,30 @@ function mapRawIssues(raw: Record<string, unknown>[]): ScanIssue[] {
   }));
 }
 
+function applySeverityRulesToIssues(issues: ScanIssue[]): {
+  issues: ScanIssue[];
+  overrideCount: number;
+} {
+  let overrideCount = 0;
+
+  const updated = issues.map((issue) => {
+    const original = issue.severity;
+    const severity = applySeverityRules(
+      issue.issue_name,
+      issue.description,
+      issue.severity
+    );
+
+    if (severity !== original) {
+      overrideCount++;
+    }
+
+    return { ...issue, severity };
+  });
+
+  return { issues: updated, overrideCount };
+}
+
 export async function runCombinedAnalysis(
   discoveryResponse: string,
   codeMarkdown: string,
@@ -225,6 +253,7 @@ export async function runCombinedAnalysis(
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: 4000,
+      temperature: 0,
       system: COMBINED_SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],
     });
@@ -248,7 +277,13 @@ export async function runCombinedAnalysis(
       console.warn("[scan/analyzer] Layer 4: Claude returned empty or unparseable JSON");
     }
 
-    const { issues: confidenceFiltered } = filterByConfidence(mapped);
+    const { issues: severityAdjusted, overrideCount } =
+      applySeverityRulesToIssues(mapped);
+    console.log(
+      `[scan/analyzer] Severity rules applied: ${overrideCount} overrides`
+    );
+
+    const { issues: confidenceFiltered } = filterByConfidence(severityAdjusted);
     console.log(
       `[scan/analyzer] Layer 4: ${confidenceFiltered.length} issues passed confidence filter`
     );
@@ -349,8 +384,16 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     tool
   );
 
+  console.log(
+    `[scan/analyzer] Before dedup: ${normalized.length} total issues from all layers`
+  );
+
   const { issues: deduped, removed: dedupRemoved } = deduplicateIssues(normalized);
-  console.log(`[scan/analyzer] Deduplicated ${dedupRemoved} issues`);
+  console.log(`[scan/analyzer] After dedup: ${deduped.length} issues remaining`);
+
+  if (dedupRemoved > 0) {
+    console.log(`[scan/analyzer] Deduplicated ${dedupRemoved} issues`);
+  }
 
   const { issues: filtered, filteredLow } = filterByConfidence(deduped);
   if (filteredLow > 0) {
@@ -359,7 +402,17 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     );
   }
 
+  const scoreBreakdown = calculateHealthScoreBreakdown(filtered);
   const pillarScores = calculateHealthScores(filtered);
+
+  const capMessage =
+    scoreBreakdown.pillarCap != null
+      ? `${scoreBreakdown.pillarCap} → final score: ${scoreBreakdown.finalScore}`
+      : `none → final score: ${scoreBreakdown.finalScore}`;
+
+  console.log(
+    `[scan/analyzer] Score formula: started 100, -${scoreBreakdown.criticalCount} critical, -${scoreBreakdown.warningCount} warning, -${scoreBreakdown.infoCount} info = ${scoreBreakdown.rawScore}, pillar cap applied: ${capMessage}`
+  );
   console.log(`[scan/analyzer] Total issues saved: ${filtered.length}`);
   console.log(`[scan/analyzer] Overall score: ${pillarScores.overall}`);
 

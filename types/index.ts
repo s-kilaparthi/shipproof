@@ -86,6 +86,7 @@ export interface ScanIssueRow {
   fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
+  fingerprint?: string | null;
   confidence?: Confidence;
   evidence?: string | null;
   created_at: string;

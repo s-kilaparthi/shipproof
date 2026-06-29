@@ -5,6 +5,7 @@ import { runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
 import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
 import { parseFixPrompt } from "@/lib/scan/fix-parser";
+import { generateFingerprint } from "@/lib/scan/fingerprint";
 import { fetchTargetedFiles } from "@/lib/scan/github-files";
 import { calculateHealthScores } from "@/lib/scan/health-score";
 import type { Tool } from "@/types";
@@ -100,6 +101,11 @@ export async function POST(request: Request) {
           fix_steps: isMultiStep ? steps : null,
           confidence: issue.confidence ?? "medium",
           evidence: issue.evidence ?? null,
+          fingerprint: generateFingerprint({
+            pillar: issue.pillar,
+            issue_name: issue.issue_name,
+            file_path: issue.file_path,
+          }),
         };
       });
 

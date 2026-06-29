@@ -128,10 +128,20 @@ export async function auditDependencies(
 
     (data.results ?? []).forEach((result, index) => {
       const pkg = packages[index];
-      if (!pkg || !result.vulns?.length) return;
+      if (!pkg) return;
+
+      if (!result.vulns?.length) {
+        console.log(
+          `[scan/analyzer] Layer 2: Package ${pkg.name}@${pkg.version} - clean`
+        );
+        return;
+      }
 
       for (const vuln of result.vulns) {
         const severity = mapOsvSeverity(vuln.database_specific?.severity);
+        console.log(
+          `[scan/analyzer] Layer 2: Vulnerability found - package: ${pkg.name}, version: ${pkg.version}, vuln_id: ${vuln.id ?? "unknown"}, severity: ${severity}`
+        );
         issues.push({
           pillar: "dependencies",
           severity,

@@ -7,6 +7,18 @@ export interface IssueCount {
   total: number;
 }
 
+export interface HealthScoreBreakdown {
+  criticalCount: number;
+  warningCount: number;
+  infoCount: number;
+  criticalDeduction: number;
+  warningDeduction: number;
+  infoDeduction: number;
+  rawScore: number;
+  pillarCap: number | null;
+  finalScore: number;
+}
+
 export function normalizeSeverity(severity: string): string {
   return severity.toLowerCase();
 }
@@ -35,6 +47,46 @@ function deductScore(score: number, severity: string): number {
   return score;
 }
 
+function hasCriticalInPillar(
+  issues: { severity: string; pillar?: string }[],
+  pillar: Pillar
+): boolean {
+  return issues.some(
+    (issue) =>
+      issue.pillar === pillar && issue.severity.toLowerCase() === "critical"
+  );
+}
+
+function hasCriticalInOtherPillars(
+  issues: { severity: string; pillar?: string }[]
+): boolean {
+  const cappedPillars: Pillar[] = ["security", "database"];
+  return issues.some(
+    (issue) =>
+      issue.severity.toLowerCase() === "critical" &&
+      issue.pillar != null &&
+      !cappedPillars.includes(issue.pillar as Pillar)
+  );
+}
+
+function getOverallPillarCap(
+  issues: { severity: string; pillar?: string }[]
+): number | null {
+  let cap: number | null = null;
+
+  if (hasCriticalInPillar(issues, "security")) {
+    cap = cap == null ? 40 : Math.min(cap, 40);
+  }
+  if (hasCriticalInPillar(issues, "database")) {
+    cap = cap == null ? 60 : Math.min(cap, 60);
+  }
+  if (hasCriticalInOtherPillars(issues)) {
+    cap = cap == null ? 70 : Math.min(cap, 70);
+  }
+
+  return cap;
+}
+
 export function calculatePillarScore(
   issues: { severity: string; pillar?: string }[],
   pillar?: Pillar
@@ -51,11 +103,41 @@ export function calculatePillarScore(
   return Math.max(0, score);
 }
 
+export function calculateHealthScoreBreakdown(
+  issues: { severity: string; pillar?: string }[]
+): HealthScoreBreakdown {
+  const counts = countIssuesBySeverity(issues);
+  const criticalDeduction = counts.critical * 15;
+  const warningDeduction = counts.warning * 7;
+  const infoDeduction = counts.info * 2;
+  const rawScore = Math.max(
+    0,
+    100 - criticalDeduction - warningDeduction - infoDeduction
+  );
+  const pillarCap = getOverallPillarCap(issues);
+  const finalScore =
+    pillarCap != null ? Math.min(rawScore, pillarCap) : rawScore;
+
+  return {
+    criticalCount: counts.critical,
+    warningCount: counts.warning,
+    infoCount: counts.info,
+    criticalDeduction,
+    warningDeduction,
+    infoDeduction,
+    rawScore,
+    pillarCap,
+    finalScore,
+  };
+}
+
 export function calculateHealthScores(
   issues: { severity: string; pillar?: string }[]
 ): PillarScores {
+  const breakdown = calculateHealthScoreBreakdown(issues);
+
   return {
-    overall: calculatePillarScore(issues),
+    overall: breakdown.finalScore,
     security: calculatePillarScore(issues, "security"),
     database: calculatePillarScore(issues, "database"),
     performance: calculatePillarScore(issues, "performance"),
