@@ -156,15 +156,28 @@ export function calculateHealthScore(
   return calculateHealthScores(issues).overall;
 }
 
+export function getDashboardScoreBadgeClass(score: number): string {
+  const base =
+    "flex size-14 shrink-0 items-center justify-center rounded-full border text-xl font-bold";
+
+  if (score < 50) {
+    return `${base} bg-red-50 border-red-200 text-red-600 dark:bg-red-950 dark:border-red-800 dark:text-red-400`;
+  }
+  if (score <= 79) {
+    return `${base} bg-amber-50 border-amber-200 text-amber-600 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-400`;
+  }
+  return `${base} bg-green-50 border-green-200 text-green-600 dark:bg-green-950 dark:border-green-800 dark:text-green-400`;
+}
+
 export function getHealthScoreColor(score: number): string {
   if (score < 50) return "text-red-600";
-  if (score <= 80) return "text-yellow-600";
+  if (score <= 80) return "text-amber-600";
   return "text-green-600";
 }
 
 export function getHealthScoreBg(score: number): string {
   if (score < 50) return "bg-red-100 text-red-700 border-red-200";
-  if (score <= 80) return "bg-yellow-100 text-yellow-700 border-yellow-200";
+  if (score <= 80) return "bg-amber-100 text-amber-700 border-amber-200";
   return "bg-green-100 text-green-700 border-green-200";
 }
 
@@ -186,12 +199,12 @@ export function getSeverityBadgeVariant(
 export function getSeverityColor(severity: string): string {
   const s = severity.toLowerCase();
   if (s === "critical") return "bg-red-100 text-red-700 border-red-200";
-  if (s === "warning") return "bg-yellow-100 text-yellow-700 border-yellow-200";
-  return "bg-blue-100 text-blue-700 border-blue-200";
+  if (s === "warning") return "bg-amber-100 text-amber-700 border-amber-200";
+  return "bg-gray-100 text-gray-600 border-gray-200";
 }
 
 export function getPillarDotColor(score: number): string {
   if (score < 50) return "bg-red-500";
-  if (score <= 80) return "bg-yellow-500";
+  if (score <= 80) return "bg-amber-500";
   return "bg-green-500";
 }

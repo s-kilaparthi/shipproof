@@ -38,7 +38,7 @@ export function RescanModeSelector({
       </CardHeader>
       <CardContent className="space-y-4">
         {discoveryAgeDays > 7 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <div className="rounded-lg border border-card-border bg-muted-background px-4 py-3 text-sm text-muted-foreground">
             💡 Your discovery is {discoveryAgeRounded} day
             {discoveryAgeRounded === 1 ? "" : "s"} old. We recommend a Full
             Rescan if you&apos;ve added new features or changed your tech stack
@@ -54,12 +54,12 @@ export function RescanModeSelector({
               if (e.key === "Enter" || e.key === " ") onQuickRescan();
             }}
             className={cn(
-              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-primary hover:bg-primary/5 hover:ring-2 hover:ring-primary/20",
+              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-foreground hover:shadow-sm",
               isSubmitting && "pointer-events-none opacity-50"
             )}
           >
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <Zap className="size-5 text-primary" />
+            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <Zap className="size-5 text-foreground" />
               Quick Rescan
             </div>
             <p className="mt-2 text-sm text-muted-foreground">
@@ -81,12 +81,12 @@ export function RescanModeSelector({
               if (e.key === "Enter" || e.key === " ") onFullRescan();
             }}
             className={cn(
-              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-primary hover:bg-primary/5 hover:ring-2 hover:ring-primary/20",
+              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-foreground hover:shadow-sm",
               isSubmitting && "pointer-events-none opacity-50"
             )}
           >
-            <div className="flex items-center gap-2 text-lg font-semibold">
-              <RefreshCw className="size-5 text-primary" />
+            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <RefreshCw className="size-5 text-foreground" />
               Full Rescan
             </div>
             <p className="mt-2 text-sm text-muted-foreground">

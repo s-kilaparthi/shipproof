@@ -2,7 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { DiscoveryPrompt } from "@/components/scan/discovery-prompt";
@@ -43,7 +43,7 @@ function StepIndicator({
         <p className="text-sm text-muted-foreground">
           Step {Math.max(1, currentIndex + 1)} of {displaySteps.length}
         </p>
-        <p className="font-medium">
+        <p className="font-semibold text-black dark:text-white">
           {displaySteps[currentIndex]?.label ?? "Scanning"}
         </p>
       </div>
@@ -58,25 +58,33 @@ function StepIndicator({
               <div className="flex items-center gap-2">
                 <div
                   className={cn(
-                    "flex size-8 items-center justify-center rounded-full text-xs font-medium transition-colors",
-                    isActive && "bg-primary text-primary-foreground",
-                    isComplete && "bg-primary/20 text-primary",
-                    !isActive && !isComplete && "bg-muted text-muted-foreground"
+                    "flex size-8 items-center justify-center rounded-full text-sm transition-colors",
+                    isActive &&
+                      "bg-black font-bold text-white dark:bg-white dark:text-black",
+                    isComplete &&
+                      "bg-black text-white dark:bg-white dark:text-black",
+                    !isActive &&
+                      !isComplete &&
+                      "bg-gray-200 font-semibold text-gray-600 dark:bg-gray-700 dark:text-gray-300"
                   )}
                 >
-                  {index + 1}
+                  {isComplete ? <Check className="size-4" /> : index + 1}
                 </div>
                 <span
                   className={cn(
-                    "text-sm font-medium",
-                    isActive ? "text-foreground" : "text-muted-foreground"
+                    "text-sm",
+                    isActive && "font-semibold text-black dark:text-white",
+                    isComplete && "text-black dark:text-white",
+                    !isActive &&
+                      !isComplete &&
+                      "text-gray-400 dark:text-gray-500"
                   )}
                 >
                   {step.label}
                 </span>
               </div>
               {index < displaySteps.length - 1 && (
-                <span className="mx-1 text-muted-foreground">→</span>
+                <span className="mx-1 text-gray-300 dark:text-gray-600">→</span>
               )}
             </div>
           );

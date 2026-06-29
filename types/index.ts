@@ -1,6 +1,15 @@
 export type Severity = "Critical" | "Warning" | "Info";
 
-export type Tool = "Cursor" | "Lovable" | "Bolt" | "V0";
+export type Tool =
+  | "Cursor"
+  | "Lovable"
+  | "Bolt"
+  | "V0"
+  | "Claude Code"
+  | "Codex"
+  | "Replit"
+  | "Windsurf"
+  | "Other";
 
 export type Pillar =
   | "security"
@@ -302,6 +311,31 @@ export const TOOL_OPTIONS: {
     id: "V0",
     name: "V0",
     description: "AI UI builder by Vercel",
+  },
+  {
+    id: "Claude Code",
+    name: "Claude Code",
+    description: "Anthropic's coding agent",
+  },
+  {
+    id: "Codex",
+    name: "Codex",
+    description: "OpenAI's coding agent",
+  },
+  {
+    id: "Replit",
+    name: "Replit",
+    description: "AI app builder",
+  },
+  {
+    id: "Windsurf",
+    name: "Windsurf",
+    description: "AI code editor",
+  },
+  {
+    id: "Other",
+    name: "Other / I code manually",
+    description: "Manual coding or another AI assistant",
   },
 ];
 

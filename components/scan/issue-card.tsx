@@ -40,7 +40,7 @@ function confidenceLabel(confidence?: Confidence): string {
 function confidenceBadgeClass(confidence?: Confidence): string {
   if (confidence === "high") return "bg-green-100 text-green-700 border-green-200";
   if (confidence === "low") return "bg-muted text-muted-foreground border-border";
-  return "bg-blue-100 text-blue-700 border-blue-200";
+  return "border border-border bg-muted text-muted-foreground";
 }
 
 function resolveFixType(issue: ScanIssueRow, step?: FixStep): FixType {
@@ -144,7 +144,7 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
               >
                 {confidenceLabel(issue.confidence)}
               </Badge>
-              <CardTitle className="text-base">{issue.issue_name}</CardTitle>
+              <CardTitle className="text-base text-foreground">{issue.issue_name}</CardTitle>
             </div>
             {(issue.file_path || issue.line_number) && (
               <p className="font-mono text-xs text-muted-foreground">
@@ -251,7 +251,7 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                     })}
                   </div>
 
-                  <p className="text-xs text-amber-700">
+                  <p className="text-xs text-muted-foreground">
                     Complete all steps before rescanning to verify the fix
                   </p>
 

@@ -1,10 +1,11 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { ensureUserProfile, requireUser } from "@/lib/auth";
 import type { CreateScanRequest, Tool } from "@/types";
+import { TOOL_OPTIONS } from "@/types";
 
 export const dynamic = "force-dynamic";
 
-const VALID_TOOLS: Tool[] = ["Cursor", "Lovable", "Bolt", "V0"];
+const VALID_TOOLS: Tool[] = TOOL_OPTIONS.map((tool) => tool.id);
 
 function validateCreateScanRequest(body: unknown): {
   valid: boolean;

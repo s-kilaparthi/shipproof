@@ -9,7 +9,19 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-geist-sans)",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        mono: ["var(--font-geist-mono)", "ui-monospace", "monospace"],
+      },
       colors: {
+        "card-border": "var(--card-border)",
+        "section-alt": "var(--section-alt)",
+        "muted-background": "var(--muted-background)",
         background: "var(--background)",
         foreground: "var(--foreground)",
         card: {

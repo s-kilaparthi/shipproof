@@ -39,7 +39,7 @@ export function ScanReport({
         <div className="rounded-lg border border-border bg-muted/30 p-6">
           {status === "scanning" ? (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <Loader2 className="size-10 animate-spin text-primary" />
+              <Loader2 className="size-10 animate-spin text-foreground" />
               <p className="font-medium">Scanning your codebase...</p>
               <p className="max-w-md text-sm text-muted-foreground">
                 We&apos;re analyzing {repo.full_name} for security issues,
@@ -48,7 +48,7 @@ export function ScanReport({
             </div>
           ) : (
             <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <CheckCircle2 className="size-10 text-primary" />
+              <CheckCircle2 className="size-10 text-green-600" />
               <p className="font-medium">Scan complete</p>
             </div>
           )}

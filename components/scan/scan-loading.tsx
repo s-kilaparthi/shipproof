@@ -38,10 +38,12 @@ export function ScanLoading({ isActive }: ScanLoadingProps) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
-      <div className="mx-4 w-full max-w-md rounded-xl border border-border bg-card p-8 shadow-lg">
+      <div className="mx-4 w-full max-w-md rounded-xl border border-card-border bg-card p-8 shadow-lg">
         <div className="flex flex-col items-center text-center">
-          <Loader2 className="size-10 animate-spin text-primary" />
-          <h2 className="mt-6 text-xl font-semibold">Analyzing your app</h2>
+          <Loader2 className="size-10 animate-spin text-foreground" />
+          <h2 className="mt-6 text-xl font-semibold text-foreground">
+            Analyzing your app
+          </h2>
           <p className="mt-2 text-sm text-muted-foreground">
             Optimized 4-layer scan in progress. This may take a minute.
           </p>
@@ -57,7 +59,7 @@ export function ScanLoading({ isActive }: ScanLoadingProps) {
                 key={step}
                 className={cn(
                   "flex items-center gap-3 rounded-lg border px-4 py-3 transition-all",
-                  isCurrent && "border-primary bg-primary/5",
+                  isCurrent && "border-black bg-muted/50 dark:border-white",
                   isComplete && "border-border bg-muted/30",
                   !isCurrent && !isComplete && "border-transparent opacity-50"
                 )}
@@ -65,15 +67,16 @@ export function ScanLoading({ isActive }: ScanLoadingProps) {
                 {isComplete ? (
                   <Check className="size-4 shrink-0 text-green-600" />
                 ) : isCurrent ? (
-                  <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
+                  <Loader2 className="size-4 shrink-0 animate-spin text-foreground" />
                 ) : (
                   <div className="size-4 shrink-0 rounded-full border border-muted-foreground/30" />
                 )}
                 <span
                   className={cn(
                     "text-sm",
-                    isCurrent && "font-medium",
-                    isComplete && "text-muted-foreground"
+                    isCurrent && "font-medium text-foreground",
+                    isComplete && "text-muted-foreground",
+                    !isCurrent && !isComplete && "text-muted-foreground"
                   )}
                 >
                   {step}

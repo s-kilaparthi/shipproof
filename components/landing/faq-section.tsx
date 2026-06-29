@@ -43,17 +43,17 @@ export function FaqSection() {
         return (
           <div
             key={item.q}
-            className="overflow-hidden rounded-xl border border-white/10 bg-[#12121a]"
+            className="overflow-hidden rounded-xl border border-card-border bg-card shadow-sm"
           >
             <button
               type="button"
               onClick={() => setOpenIndex(isOpen ? null : index)}
               className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left"
             >
-              <span className="font-medium text-white">{item.q}</span>
+              <span className="font-medium text-foreground">{item.q}</span>
               <ChevronDown
                 className={cn(
-                  "size-5 shrink-0 text-gray-400 transition-transform",
+                  "size-5 shrink-0 text-muted-foreground transition-transform",
                   isOpen && "rotate-180"
                 )}
               />
@@ -66,7 +66,7 @@ export function FaqSection() {
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.25 }}
                 >
-                  <p className="border-t border-white/5 px-5 pb-4 pt-3 text-sm leading-relaxed text-gray-400">
+                  <p className="border-t border-card-border px-5 pb-4 pt-3 text-sm leading-relaxed text-muted-foreground">
                     {item.a}
                   </p>
                 </motion.div>

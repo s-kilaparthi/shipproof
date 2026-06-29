@@ -130,12 +130,12 @@ export function RepoSelector({
                   className={cn(
                     "w-full rounded-lg border p-4 text-left transition-all hover:bg-muted/50",
                     isSelected
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                      : "border-border"
+                      ? "border-2 border-black bg-muted/50 dark:border-white"
+                      : "border-gray-200 hover:shadow-sm dark:border-gray-800"
                   )}
                 >
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium">{repo.full_name}</span>
+                    <span className="font-medium text-foreground">{repo.full_name}</span>
                     <Badge variant={repo.private ? "secondary" : "outline"}>
                       {repo.private ? "Private" : "Public"}
                     </Badge>

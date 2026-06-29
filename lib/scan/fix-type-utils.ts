@@ -90,16 +90,8 @@ export function getFixTypeBadgeLabel(fixType: FixType): string {
 }
 
 export function getFixTypeBadgeClass(fixType: FixType): string {
-  switch (fixType) {
-    case "sql":
-      return "bg-purple-100 text-purple-700 border-purple-200";
-    case "terminal":
-      return "bg-green-100 text-green-700 border-green-200";
-    case "manual":
-      return "bg-orange-100 text-orange-700 border-orange-200";
-    default:
-      return "bg-blue-100 text-blue-700 border-blue-200";
-  }
+  void fixType;
+  return "border border-border bg-muted text-foreground";
 }
 
 export function getCopyButtonLabel(fixType: FixType, tool: string): string {

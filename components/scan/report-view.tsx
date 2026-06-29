@@ -76,25 +76,19 @@ export function ReportView({
       <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <ShieldCheck className="size-7 text-primary" />
-            <span className="text-lg font-semibold">ShipProof</span>
+            <ShieldCheck className="size-7 text-foreground" />
+            <span className="text-lg font-semibold text-foreground">ShipProof</span>
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight sm:text-3xl">
+          <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             {repoName}
           </h1>
           <div className="mt-2">
             {isQuickRescan ? (
-              <Badge
-                variant="outline"
-                className="gap-1 bg-amber-50 text-amber-800 border-amber-200 text-xs font-normal"
-              >
+              <Badge variant="outline" className="text-xs font-normal">
                 ⚡ Quick Rescan · Discovery from {discoveryAgeLabel ?? "previous scan"}
               </Badge>
             ) : (
-              <Badge
-                variant="outline"
-                className="gap-1 bg-blue-50 text-blue-800 border-blue-200 text-xs font-normal"
-              >
+              <Badge variant="outline" className="text-xs font-normal">
                 🔄 Full Rescan · Fresh discovery
               </Badge>
             )}
@@ -132,9 +126,9 @@ export function ReportView({
             key={id}
             type="button"
             onClick={() => scrollToPillar(id)}
-            className={`rounded-xl border p-4 text-left transition-all hover:ring-2 hover:ring-primary/20 ${getHealthScoreBg(pillarScores[id])}`}
+            className={`rounded-xl border p-4 text-left transition-all hover:shadow-sm ${getHealthScoreBg(pillarScores[id])}`}
           >
-            <p className="text-xs font-medium uppercase tracking-wide opacity-70">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               {label}
             </p>
             <p
@@ -151,7 +145,7 @@ export function ReportView({
         <Card>
           <CardContent className="flex flex-col items-center py-16 text-center">
             <ShieldCheck className="size-12 text-green-600" />
-            <h2 className="mt-4 text-xl font-semibold">
+            <h2 className="mt-4 text-xl font-semibold text-foreground">
               Great news! No issues found.
             </h2>
             <p className="mt-2 max-w-md text-muted-foreground">
@@ -174,7 +168,7 @@ export function ReportView({
                   className="scroll-mt-24"
                 >
                   <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold">{label}</h2>
+                    <h2 className="text-lg font-semibold text-muted-foreground">{label}</h2>
                     <Badge
                       variant="outline"
                       className={getHealthScoreBg(pillarScores[id])}
@@ -196,12 +190,12 @@ export function ReportView({
 
       {/* Summary footer */}
       <div className="mt-12 rounded-xl border border-border bg-muted/30 p-6">
-        <h3 className="font-semibold">Summary</h3>
+        <h3 className="font-semibold text-foreground">Summary</h3>
         <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
           <span>{counts.total} total issues</span>
           <span className="text-red-600">{counts.critical} critical</span>
-          <span className="text-yellow-600">{counts.warning} warning</span>
-          <span className="text-blue-600">{counts.info} info</span>
+          <span className="text-amber-600">{counts.warning} warning</span>
+          <span className="text-gray-500">{counts.info} info</span>
         </div>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">

@@ -33,21 +33,18 @@ const TRUST_ITEMS = [
 const PROBLEM_CARDS = [
   {
     icon: ShieldX,
-    iconClass: "text-red-400",
     title: "Your app has no rate limiting",
     body: "Any attacker can spam your API, drain your budget, and bring down your server. AI never told you to add it.",
     label: "Security",
   },
   {
     icon: Zap,
-    iconClass: "text-amber-400",
     title: "Loading 50,000 rows with no pagination",
     body: "Works fine with 10 users. Crashes at 1,000. You'll find out at the worst possible time.",
     label: "Performance",
   },
   {
     icon: Server,
-    iconClass: "text-purple-400",
     title: "No error monitoring",
     body: "Your app goes down at 2am. You find out from an angry user on Twitter. Not from your own system.",
     label: "Infrastructure",
@@ -130,6 +127,10 @@ const TOOLS = [
   { name: "Lovable", desc: "AI web app builder" },
   { name: "Bolt", desc: "AI full stack builder" },
   { name: "v0", desc: "AI UI builder by Vercel" },
+  { name: "Claude Code", desc: "Anthropic's coding agent" },
+  { name: "Codex", desc: "OpenAI's coding agent" },
+  { name: "Replit", desc: "AI app builder" },
+  { name: "Windsurf", desc: "AI code editor" },
 ];
 
 const PRICING: Array<{
@@ -140,7 +141,6 @@ const PRICING: Array<{
   features: string[];
   cta: string;
   popular: boolean;
-  filled: boolean;
 }> = [
   {
     name: "Free",
@@ -149,7 +149,6 @@ const PRICING: Array<{
     features: ["1 free scan", "Top 3 issues only", "Basic report"],
     cta: "Start Free",
     popular: false,
-    filled: false,
   },
   {
     name: "One-Time",
@@ -165,7 +164,6 @@ const PRICING: Array<{
     ],
     cta: "Get Full Scan",
     popular: true,
-    filled: true,
   },
   {
     name: "Pro",
@@ -180,7 +178,6 @@ const PRICING: Array<{
     ],
     cta: "Start Pro",
     popular: false,
-    filled: false,
   },
 ];
 
@@ -211,6 +208,9 @@ const TRUST_CARDS: Array<{
   },
 ];
 
+const CARD_CLASS =
+  "rounded-xl border border-[var(--card-border)] bg-[var(--card)] shadow-sm transition-shadow hover:shadow-md";
+
 function SectionHeading({
   children,
   className,
@@ -221,7 +221,7 @@ function SectionHeading({
   return (
     <h2
       className={cn(
-        "text-center text-3xl font-bold tracking-tight text-white sm:text-4xl",
+        "text-center text-3xl font-bold tracking-tight text-foreground sm:text-4xl",
         className
       )}
     >
@@ -232,35 +232,30 @@ function SectionHeading({
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
+    <div className="min-h-screen bg-background text-foreground">
       <LandingNav />
 
       {/* Hero */}
-      <section className="relative overflow-hidden px-4 pb-24 pt-32 sm:px-6 sm:pb-32 sm:pt-40">
-        <div className="pointer-events-none absolute inset-0 -z-10">
-          <div className="absolute left-1/2 top-0 h-[500px] w-[800px] -translate-x-1/2 rounded-full bg-[#3b82f6]/10 blur-[120px]" />
-          <div className="absolute right-0 top-1/3 h-[300px] w-[400px] rounded-full bg-[#8b5cf6]/10 blur-[100px]" />
-        </div>
-
+      <section className="bg-background px-4 pb-24 pt-32 sm:px-6 sm:pb-32 sm:pt-40">
         <div className="mx-auto max-w-4xl text-center">
           <HeroFadeIn>
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-sm text-gray-300">
+            <span className="inline-flex items-center gap-2 rounded-full border border-card-border bg-muted-background px-4 py-1.5 text-sm text-muted-foreground">
               🚀 Built for the vibe coding generation
             </span>
           </HeroFadeIn>
 
           <HeroFadeIn delay={0.1}>
-            <h1 className="mt-8 text-4xl font-bold leading-[1.1] tracking-tight sm:text-6xl lg:text-7xl">
+            <h1 className="mt-8 text-5xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-6xl">
               You build it.
               <br />
-              <span className="bg-gradient-to-r from-[#3b82f6] to-[#8b5cf6] bg-clip-text text-transparent">
+              <span className="font-bold italic text-foreground">
                 We make sure it runs.
               </span>
             </h1>
           </HeroFadeIn>
 
           <HeroFadeIn delay={0.2}>
-            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-gray-400 sm:text-xl">
+            <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               ShipProof scans your vibe-coded app for security vulnerabilities,
               performance issues, and DevOps gaps — then gives you copy-paste fix
               prompts for Cursor, Lovable, Bolt, and v0.
@@ -270,10 +265,7 @@ export function LandingPage() {
           <HeroFadeIn delay={0.3}>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/login">
-                <Button
-                  size="lg"
-                  className="h-12 w-full min-w-[200px] bg-[#3b82f6] px-8 text-base text-white hover:bg-[#2563eb] sm:w-auto"
-                >
+                <Button size="lg" className="h-12 w-full min-w-[200px] px-8 text-base sm:w-auto">
                   Scan Your App Free
                 </Button>
               </Link>
@@ -281,7 +273,7 @@ export function LandingPage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="h-12 w-full min-w-[200px] border-white/20 bg-transparent px-8 text-base text-white hover:bg-white/10 sm:w-auto"
+                  className="h-12 w-full min-w-[200px] px-8 text-base sm:w-auto"
                 >
                   See a Sample Report
                 </Button>
@@ -290,7 +282,7 @@ export function LandingPage() {
           </HeroFadeIn>
 
           <HeroFadeIn delay={0.4}>
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-400">
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
               {TRUST_ITEMS.map((item) => (
                 <span key={item}>{item}</span>
               ))}
@@ -300,28 +292,28 @@ export function LandingPage() {
       </section>
 
       {/* Problem */}
-      <section className="border-t border-white/5 bg-[#0a0a0f] px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <SectionHeading>
               Your app works perfectly.
               <br />
-              <span className="text-gray-500">Until it doesn&apos;t.</span>
+              <span className="text-muted-foreground">Until it doesn&apos;t.</span>
             </SectionHeading>
           </FadeIn>
 
           <div className="mt-16 grid gap-6 md:grid-cols-3">
             {PROBLEM_CARDS.map((card, i) => (
               <FadeIn key={card.title} delay={i * 0.1}>
-                <div className="h-full rounded-2xl border border-white/10 bg-[#12121a] p-6">
-                  <span className="text-xs font-medium uppercase tracking-wider text-gray-500">
+                <div className={cn("h-full p-6", CARD_CLASS)}>
+                  <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                     {card.label}
                   </span>
-                  <card.icon className={cn("mt-4 size-8", card.iconClass)} />
-                  <h3 className="mt-4 text-lg font-semibold text-white">
+                  <card.icon className="mt-4 size-8 text-foreground" />
+                  <h3 className="mt-4 text-lg font-semibold text-foreground">
                     {card.title}
                   </h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {card.body}
                   </p>
                 </div>
@@ -330,13 +322,13 @@ export function LandingPage() {
           </div>
 
           <FadeIn delay={0.2}>
-            <blockquote className="mx-auto mt-16 max-w-xl border-l-2 border-[#3b82f6] pl-6">
-              <p className="text-lg italic text-gray-300">
+            <blockquote className="mx-auto mt-16 max-w-xl border-l-2 border-foreground pl-6">
+              <p className="text-lg italic text-muted-foreground">
                 &ldquo;your app works at 10 users.
                 <br />
                 here&apos;s why it breaks at 1,000&rdquo;
               </p>
-              <footer className="mt-3 text-sm text-gray-500">
+              <footer className="mt-3 text-sm text-muted-foreground">
                 — viral tweet that started the conversation
               </footer>
             </blockquote>
@@ -345,7 +337,7 @@ export function LandingPage() {
       </section>
 
       {/* How it works */}
-      <section className="border-t border-white/5 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <SectionHeading>Three steps to production-ready</SectionHeading>
@@ -355,14 +347,16 @@ export function LandingPage() {
             {STEPS.map((step, i) => (
               <FadeIn key={step.num} delay={i * 0.1}>
                 <div className="relative">
-                  <span className="text-5xl font-bold text-white/10">
+                  <span className="text-5xl font-bold text-gray-300 dark:text-gray-700">
                     {step.num}
                   </span>
-                  <div className="mt-4 flex size-12 items-center justify-center rounded-xl border border-[#3b82f6]/30 bg-[#3b82f6]/10">
-                    <step.icon className="size-6 text-[#3b82f6]" />
+                  <div className="mt-4 flex size-12 items-center justify-center rounded-xl border border-gray-200 bg-card dark:border-gray-800">
+                    <step.icon className="size-6 text-foreground" />
                   </div>
-                  <h3 className="mt-4 text-xl font-semibold">{step.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                  <h3 className="mt-4 text-xl font-bold text-gray-900 dark:text-white">
+                    {step.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {step.desc}
                   </p>
                 </div>
@@ -373,7 +367,7 @@ export function LandingPage() {
       </section>
 
       {/* What we check */}
-      <section className="border-t border-white/5 bg-[#12121a]/30 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-4xl">
           <FadeIn>
             <SectionHeading>We check what AI forgot to build</SectionHeading>
@@ -385,9 +379,9 @@ export function LandingPage() {
                 {CHECKS_LEFT.map((item) => (
                   <li
                     key={item}
-                    className="flex items-start gap-3 text-sm text-gray-300"
+                    className="flex items-start gap-3 text-sm text-muted-foreground"
                   >
-                    <Check className="mt-0.5 size-4 shrink-0 text-[#3b82f6]" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
                     {item}
                   </li>
                 ))}
@@ -396,15 +390,15 @@ export function LandingPage() {
                 {CHECKS_RIGHT.map((item) => (
                   <li
                     key={item}
-                    className="flex items-start gap-3 text-sm text-gray-300"
+                    className="flex items-start gap-3 text-sm text-muted-foreground"
                   >
-                    <Check className="mt-0.5 size-4 shrink-0 text-[#3b82f6]" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
                     {item}
                   </li>
                 ))}
               </ul>
             </div>
-            <p className="mt-8 text-center text-sm text-[#8b5cf6]">
+            <p className="mt-8 text-center text-sm text-muted-foreground">
               + threat modeling specific to your app type
             </p>
           </FadeIn>
@@ -412,18 +406,18 @@ export function LandingPage() {
       </section>
 
       {/* Report preview */}
-      <section className="border-t border-white/5 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <SectionHeading>A report your whole team can understand</SectionHeading>
           </FadeIn>
 
           <FadeIn delay={0.1}>
-            <div className="mt-12 overflow-hidden rounded-2xl border border-white/10 bg-[#12121a] p-6 sm:p-8">
+            <div className="mt-12 overflow-hidden rounded-2xl border border-neutral-800 bg-black p-6 text-white ring-1 ring-white/10 sm:p-8">
               <div className="flex flex-col items-center gap-4 border-b border-white/10 pb-8 sm:flex-row sm:justify-between">
                 <div>
-                  <p className="text-sm text-gray-500">Sample scan · anonymized</p>
-                  <p className="mt-1 font-mono text-sm text-gray-400">
+                  <p className="text-sm text-neutral-400">Sample scan · anonymized</p>
+                  <p className="mt-1 font-mono text-sm text-neutral-300">
                     my-saas-app
                   </p>
                 </div>
@@ -447,22 +441,22 @@ export function LandingPage() {
                       repeat: Infinity,
                       delay: i * 0.5,
                     }}
-                    className="rounded-xl border border-white/10 bg-[#0a0a0f] p-4"
+                    className="rounded-xl border border-white/10 bg-neutral-950 p-4"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className={cn("size-2 rounded-full", issue.dot)} />
                       <span className={cn("text-xs font-medium", issue.color)}>
                         {issue.severity}
                       </span>
-                      <span className="text-xs text-gray-500">·</span>
-                      <span className="text-xs text-gray-400">{issue.pillar}</span>
+                      <span className="text-xs text-neutral-500">·</span>
+                      <span className="text-xs text-neutral-400">{issue.pillar}</span>
                     </div>
                     <h4 className="mt-2 font-medium text-white">{issue.title}</h4>
-                    <p className="mt-1 text-sm text-gray-400">{issue.desc}</p>
+                    <p className="mt-1 text-sm text-neutral-400">{issue.desc}</p>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="mt-3 border-white/10 text-gray-300 hover:bg-white/5"
+                      className="mt-3 border-white/20 bg-transparent text-white hover:bg-white/10"
                     >
                       Fix Prompt
                     </Button>
@@ -471,7 +465,7 @@ export function LandingPage() {
               </div>
             </div>
 
-            <p className="mt-6 text-center text-sm text-gray-400">
+            <p className="mt-6 text-center text-sm text-muted-foreground">
               Every issue includes a copy-paste fix prompt tailored to your tool
               — Cursor, Lovable, Bolt, or v0
             </p>
@@ -480,30 +474,43 @@ export function LandingPage() {
       </section>
 
       {/* Tools */}
-      <section className="border-t border-white/5 bg-[#12121a]/30 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <SectionHeading>Works with every vibe coding tool</SectionHeading>
+            <p className="mx-auto mt-4 max-w-3xl text-center text-base text-muted-foreground sm:text-lg">
+              Works with Cursor, Lovable, Bolt, v0, Claude Code, Codex, Replit,
+              Windsurf, and any AI coding tool
+            </p>
           </FadeIn>
 
           <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {TOOLS.map((tool, i) => (
               <FadeIn key={tool.name} delay={i * 0.08}>
-                <div className="flex h-full flex-col rounded-2xl border border-white/10 bg-[#12121a] p-6">
+                <div className={cn("flex h-full flex-col p-6", CARD_CLASS)}>
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">{tool.name}</h3>
-                    <Check className="size-5 text-[#3b82f6]" />
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {tool.name}
+                    </h3>
+                    <Check className="size-5 text-foreground" />
                   </div>
-                  <p className="mt-2 text-sm text-gray-400">{tool.desc}</p>
+                  <p className="mt-2 text-sm text-muted-foreground">{tool.desc}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
+
+          <FadeIn delay={0.2}>
+            <p className="mt-8 text-center text-sm text-muted-foreground">
+              Don&apos;t see your tool? ShipProof fix prompts work with any AI
+              coding assistant.
+            </p>
+          </FadeIn>
         </div>
       </section>
 
       {/* Pricing */}
-      <section className="border-t border-white/5 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <SectionHeading>Start free. Scale when you&apos;re ready.</SectionHeading>
@@ -515,34 +522,66 @@ export function LandingPage() {
                 <motion.div
                   whileHover={{ y: -4, transition: { duration: 0.2 } }}
                   className={cn(
-                    "relative flex h-full flex-col rounded-2xl border bg-[#12121a] p-6",
+                    "relative flex h-full flex-col rounded-xl border p-6 shadow-sm transition-shadow hover:shadow-md",
                     plan.popular
-                      ? "border-[#3b82f6] shadow-lg shadow-[#3b82f6]/10"
-                      : "border-white/10"
+                      ? "border-2 border-primary bg-primary text-primary-foreground"
+                      : "border-card-border bg-card text-foreground"
                   )}
                 >
                   {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-[#3b82f6] px-3 py-0.5 text-xs font-medium text-white">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-card-border bg-background px-3 py-0.5 text-xs font-medium text-foreground">
                       Most Popular
                     </span>
                   )}
-                  <h3 className="text-lg font-semibold text-gray-300">
+                  <h3
+                    className={cn(
+                      "text-lg font-semibold",
+                      plan.popular ? "text-primary-foreground" : "text-muted-foreground"
+                    )}
+                  >
                     {plan.name}
                   </h3>
-                  <p className="mt-2 text-3xl font-bold text-white">
+                  <p
+                    className={cn(
+                      "mt-2 text-3xl font-bold",
+                      plan.popular ? "text-primary-foreground" : "text-foreground"
+                    )}
+                  >
                     {plan.price}
                   </p>
-                  <p className="text-sm text-gray-500">{plan.subtitle}</p>
+                  <p
+                    className={cn(
+                      "text-sm",
+                      plan.popular ? "text-primary-foreground/70" : "text-muted-foreground"
+                    )}
+                  >
+                    {plan.subtitle}
+                  </p>
                   {plan.tagline && (
-                    <p className="mt-1 text-sm text-gray-400">{plan.tagline}</p>
+                    <p
+                      className={cn(
+                        "mt-1 text-sm",
+                        plan.popular ? "text-primary-foreground/80" : "text-muted-foreground"
+                      )}
+                    >
+                      {plan.tagline}
+                    </p>
                   )}
                   <ul className="mt-6 flex-1 space-y-2">
                     {plan.features.map((f) => (
                       <li
                         key={f}
-                        className="flex items-center gap-2 text-sm text-gray-300"
+                        className={cn(
+                          "flex items-center gap-2 text-sm",
+                          plan.popular ? "text-primary-foreground/90" : "text-muted-foreground"
+                        )}
                       >
-                        <Check className="size-4 text-[#3b82f6]" />
+                        <Check
+                          className={cn(
+                            "size-4",
+                            plan.popular ? "text-primary-foreground" : "text-foreground"
+                          )}
+                        />
                         {f}
                       </li>
                     ))}
@@ -551,11 +590,10 @@ export function LandingPage() {
                     <Button
                       className={cn(
                         "w-full",
-                        plan.filled
-                          ? "bg-[#3b82f6] text-white hover:bg-[#2563eb]"
-                          : "border-white/20 bg-transparent text-white hover:bg-white/10"
+                        plan.popular &&
+                          "border border-primary-foreground bg-primary-foreground text-primary hover:opacity-80"
                       )}
-                      variant={plan.filled ? "default" : "outline"}
+                      variant={plan.popular ? "default" : "outline"}
                     >
                       {plan.cta}
                     </Button>
@@ -568,7 +606,7 @@ export function LandingPage() {
       </section>
 
       {/* Trust */}
-      <section className="border-t border-white/5 bg-[#12121a]/30 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <FadeIn>
             <SectionHeading>Your code stays yours</SectionHeading>
@@ -577,12 +615,12 @@ export function LandingPage() {
           <div className="mt-12 grid gap-6 sm:grid-cols-2">
             {TRUST_CARDS.map((card, i) => (
               <FadeIn key={card.title} delay={i * 0.08}>
-                <div className="rounded-2xl border border-white/10 bg-[#12121a] p-6">
-                  <div className="flex size-10 items-center justify-center rounded-lg border border-white/10 bg-white/5">
-                    <card.icon className="size-5 text-[#3b82f6]" />
+                <div className={cn("p-6", CARD_CLASS)}>
+                  <div className="flex size-10 items-center justify-center rounded-lg border border-card-border bg-muted-background">
+                    <card.icon className="size-5 text-foreground" />
                   </div>
-                  <h3 className="mt-3 font-semibold text-white">{card.title}</h3>
-                  <p className="mt-2 text-sm leading-relaxed text-gray-400">
+                  <h3 className="mt-3 font-semibold text-foreground">{card.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                     {card.desc}
                   </p>
                 </div>
@@ -593,7 +631,7 @@ export function LandingPage() {
       </section>
 
       {/* FAQ */}
-      <section className="border-t border-white/5 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-background px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-3xl">
           <FadeIn>
             <SectionHeading>Common questions</SectionHeading>
@@ -607,25 +645,22 @@ export function LandingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="border-t border-white/5 px-4 py-24 sm:px-6">
+      <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
         <FadeIn>
           <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl">
+            <h2 className="text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
               Ship with confidence.
             </h2>
-            <p className="mt-4 text-lg text-gray-400">
+            <p className="mt-4 text-lg text-muted-foreground">
               Join founders who caught their security issues before their users
               did.
             </p>
             <Link href="/login" className="mt-8 inline-block">
-              <Button
-                size="lg"
-                className="h-14 bg-[#3b82f6] px-10 text-lg text-white hover:bg-[#2563eb]"
-              >
+              <Button size="lg" className="h-14 px-10 text-lg">
                 Scan Your App Free
               </Button>
             </Link>
-            <p className="mt-4 text-sm text-gray-500">
+            <p className="mt-4 text-sm text-muted-foreground">
               Free scan · No credit card required
             </p>
           </div>
@@ -633,31 +668,31 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/10 px-4 py-12 sm:px-6">
+      <footer className="border-t border-card-border bg-background px-4 py-12 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-lg font-bold">⚡ ShipProof</p>
-              <p className="mt-1 text-sm text-gray-500">
+              <p className="text-lg font-bold text-foreground">⚡ ShipProof</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 You build it. We make sure it runs.
               </p>
             </div>
-            <div className="flex gap-6 text-sm text-gray-400">
-              <Link href="/login" className="hover:text-white">
+            <div className="flex gap-6 text-sm text-muted-foreground">
+              <Link href="/login" className="text-foreground hover:underline">
                 Privacy
               </Link>
-              <Link href="/login" className="hover:text-white">
+              <Link href="/login" className="text-foreground hover:underline">
                 Terms
               </Link>
-              <Link href="/login" className="hover:text-white">
+              <Link href="/login" className="text-foreground hover:underline">
                 Contact
               </Link>
             </div>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Built with ❤️ for the vibe coding generation
             </p>
           </div>
-          <p className="mt-8 border-t border-white/5 pt-8 text-center text-xs text-gray-600">
+          <p className="mt-8 border-t border-card-border pt-8 text-center text-xs text-muted-foreground">
             © 2026 ShipProof · shipproof.app
           </p>
         </div>
