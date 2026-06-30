@@ -257,6 +257,7 @@ Also provide:
 - Every table name with its columns
 - Every foreign key relationship
 - RLS policies — quote all policy definitions or write NONE
+- Also check for a supabase/migrations/ folder in the repo. If RLS policies are NOT found in code (only configured in Supabase dashboard), note this explicitly: 'RLS policies are not version controlled in code - they may exist in the Supabase dashboard but cannot be verified from the repository alone.'
 - Indexes defined — quote them or write NONE
 - Any raw SQL strings in codebase — quote them or write NONE
 - Connection pooling configuration — quote it or write NONE

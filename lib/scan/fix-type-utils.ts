@@ -99,12 +99,35 @@ export function getCopyButtonLabel(fixType: FixType, tool: string): string {
     case "sql":
       return "Run in Supabase SQL Editor";
     case "terminal":
-      return "Run in Terminal";
+      return "Copy Command";
     case "manual":
       return "View Instructions";
     default:
       return `Paste into ${tool}`;
   }
+}
+
+export function extractTerminalCommand(fixPrompt: string): {
+  explanation: string;
+  command: string | null;
+} {
+  const runMatch = fixPrompt.match(/Run:\s*(.+)$/i);
+  if (runMatch) {
+    const command = runMatch[1].trim();
+    const explanation = fixPrompt.slice(0, runMatch.index).trim();
+    return { explanation, command };
+  }
+
+  const cmdMatch = fixPrompt.match(
+    /(npm|yarn|pip|pnpm)\s+(install|update|run)[^.]*$/i
+  );
+  if (cmdMatch) {
+    const command = cmdMatch[0].trim();
+    const explanation = fixPrompt.slice(0, cmdMatch.index).trim();
+    return { explanation, command };
+  }
+
+  return { explanation: fixPrompt, command: null };
 }
 
 export function getMultiStepIntro(fixTypes: FixType[], tool: string): string {

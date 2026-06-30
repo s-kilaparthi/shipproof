@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatAllSteps, formatStepText } from "@/lib/scan/fix-parser";
 import {
+  extractTerminalCommand,
   getCopyButtonLabel,
   getFixTypeBadgeClass,
   getFixTypeBadgeLabel,
@@ -74,12 +75,80 @@ async function copyText(text: string, successMessage: string) {
   toast.success(successMessage);
 }
 
+function TerminalFixDisplay({
+  fixPrompt,
+  copied,
+  onCopyCommand,
+}: {
+  fixPrompt: string;
+  copied: boolean;
+  onCopyCommand: (command: string) => void;
+}) {
+  const { explanation, command } = extractTerminalCommand(fixPrompt);
+
+  if (!command) {
+    return (
+      <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
+        {fixPrompt}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {explanation ? (
+        <div>
+          <p className="text-xs font-medium text-foreground">What this does:</p>
+          <p className="mt-1 text-sm text-muted-foreground">{explanation}</p>
+        </div>
+      ) : null}
+
+      <div>
+        <p className="text-xs font-medium text-foreground">Run this command:</p>
+        <div className="mt-2 overflow-hidden rounded-lg bg-black dark:bg-gray-950">
+          <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
+            <span className="size-2.5 rounded-full bg-red-500" aria-hidden />
+            <span className="size-2.5 rounded-full bg-amber-500" aria-hidden />
+            <span className="size-2.5 rounded-full bg-green-500" aria-hidden />
+          </div>
+          <pre className="overflow-x-auto p-3 font-mono text-sm text-green-400">
+            {command}
+          </pre>
+        </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="mt-3 gap-2"
+          onClick={() => onCopyCommand(command)}
+        >
+          {copied ? (
+            <>
+              <Check className="size-4" />
+              Copied
+            </>
+          ) : (
+            <>
+              <Copy className="size-4" />
+              Copy Command
+            </>
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export function IssueCard({ issue, tool }: IssueCardProps) {
   const [fixExpanded, setFixExpanded] = useState(false);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState(false);
+  const [copiedCommand, setCopiedCommand] = useState(false);
   const [copiedSteps, setCopiedSteps] = useState<Record<number, boolean>>({});
+  const [copiedStepCommands, setCopiedStepCommands] = useState<
+    Record<number, boolean>
+  >({});
 
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
@@ -93,6 +162,29 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
       );
       setCopiedSingle(true);
       setTimeout(() => setCopiedSingle(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleCopyCommand = async (command: string) => {
+    try {
+      await copyText(command, "Command copied to clipboard");
+      setCopiedCommand(true);
+      setTimeout(() => setCopiedCommand(false), 2000);
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleCopyStepCommand = async (stepNumber: number, command: string) => {
+    try {
+      await copyText(command, "Command copied to clipboard");
+      setCopiedStepCommands((prev) => ({ ...prev, [stepNumber]: true }));
+      setTimeout(
+        () => setCopiedStepCommands((prev) => ({ ...prev, [stepNumber]: false })),
+        2000
+      );
     } catch {
       toast.error("Failed to copy");
     }
@@ -209,6 +301,11 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                     {steps.map((step) => {
                       const stepFixType = resolveFixType(issue, step);
                       const stepCopied = copiedSteps[step.stepNumber];
+                      const stepCommandCopied = copiedStepCommands[step.stepNumber];
+                      const stepTerminal = stepFixType === "terminal";
+                      const stepParsed = stepTerminal
+                        ? extractTerminalCommand(step.instruction)
+                        : null;
 
                       return (
                         <div
@@ -224,28 +321,40 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
                               {step.filePath}
                             </span>
                           </div>
-                          <pre className="max-h-48 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap">
-                            {step.instruction}
-                          </pre>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            className="mt-3 gap-2"
-                            onClick={() => handleCopyStep(step)}
-                          >
-                            {stepCopied ? (
-                              <>
-                                <Check className="size-4" />
-                                Copied
-                              </>
-                            ) : (
-                              <>
-                                <FixTypeIcon fixType={stepFixType} />
-                                {getCopyButtonLabel(stepFixType, tool)}
-                              </>
-                            )}
-                          </Button>
+                          {stepTerminal && stepParsed?.command ? (
+                            <TerminalFixDisplay
+                              fixPrompt={step.instruction}
+                              copied={!!stepCommandCopied}
+                              onCopyCommand={(command) =>
+                                handleCopyStepCommand(step.stepNumber, command)
+                              }
+                            />
+                          ) : (
+                            <>
+                              <pre className="max-h-48 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap">
+                                {step.instruction}
+                              </pre>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-3 gap-2"
+                                onClick={() => handleCopyStep(step)}
+                              >
+                                {stepCopied ? (
+                                  <>
+                                    <Check className="size-4" />
+                                    Copied
+                                  </>
+                                ) : (
+                                  <>
+                                    <FixTypeIcon fixType={stepFixType} />
+                                    {getCopyButtonLabel(stepFixType, tool)}
+                                  </>
+                                )}
+                              </Button>
+                            </>
+                          )}
                         </div>
                       );
                     })}
@@ -278,28 +387,39 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
               ) : (
                 <>
                   <FixTypeBadge fixType={singleFixType} />
-                  <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-                    {issue.fix_prompt}
-                  </pre>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={handleCopySingle}
-                  >
-                    {copiedSingle ? (
-                      <>
-                        <Check className="size-4" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <FixTypeIcon fixType={singleFixType} />
-                        {getCopyButtonLabel(singleFixType, tool)}
-                      </>
-                    )}
-                  </Button>
+                  {singleFixType === "terminal" &&
+                  extractTerminalCommand(issue.fix_prompt).command ? (
+                    <TerminalFixDisplay
+                      fixPrompt={issue.fix_prompt}
+                      copied={copiedCommand}
+                      onCopyCommand={handleCopyCommand}
+                    />
+                  ) : (
+                    <>
+                      <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
+                        {issue.fix_prompt}
+                      </pre>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleCopySingle}
+                      >
+                        {copiedSingle ? (
+                          <>
+                            <Check className="size-4" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <FixTypeIcon fixType={singleFixType} />
+                            {getCopyButtonLabel(singleFixType, tool)}
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
                 </>
               )}
             </div>

@@ -77,9 +77,11 @@ SECURITY PILLAR:
 - API endpoints with no auth check → critical
 - CORS set to wildcard * → critical
 - No input validation on user inputs → critical
-- Supabase RLS disabled or missing → critical
+- Supabase RLS disabled or missing → critical (see RLS severity rule below)
 - Hardcoded secrets or API keys → critical
 - No rate limiting on public endpoints → critical
+
+For RLS-related findings: if the discovery response explicitly states RLS policies are configured in the Supabase dashboard (even if not in code), treat this as a WARNING severity 'RLS not version controlled' issue instead of a CRITICAL 'no RLS policies' issue. Only use CRITICAL severity for RLS if there is clear evidence RLS is completely absent or disabled.
 
 DATABASE PILLAR:
 - No pagination on list queries → warning
