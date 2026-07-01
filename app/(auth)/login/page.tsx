@@ -36,9 +36,11 @@ export default function LoginPage({ searchParams }: LoginPageProps) {
             </p>
           )}
           <GitHubLoginButton />
-          <p className="mt-4 text-center text-xs text-muted-foreground">
-            🔒 Read-only access · We never store your code · Only security
-            issues are saved
+          <p className="mt-4 text-center text-xs leading-relaxed text-muted-foreground">
+            GitHub requires repo-level access to read private repositories. ShipProof
+            only ever reads file contents to scan for issues — we never write, modify,
+            create, or delete anything in your repository. You can verify this by
+            reviewing our open API routes.
           </p>
         </div>
       </div>

@@ -61,7 +61,7 @@ const STEPS: Array<{
     num: "01",
     icon: GitBranch,
     title: "Connect your repo",
-    desc: "Sign in with GitHub and select the repo you want to scan. Read-only access — we never modify your code.",
+    desc: "Sign in with GitHub and select the repo you want to scan. We request repo-level access (required for private repos) but only read file contents — never write, modify, or delete.",
   },
   {
     num: "02",
@@ -193,8 +193,8 @@ const TRUST_CARDS: Array<{
   },
   {
     icon: Eye,
-    title: "Read-only GitHub access",
-    desc: "We request read-only repository access. We can never modify, delete, or push to your repo.",
+    title: "Repo scope, read-only behavior",
+    desc: "GitHub requires repo-level access to read private repositories. ShipProof only ever reads file contents to scan for issues — we never write, modify, create, or delete anything in your repository. You can verify this by reviewing our open API routes.",
   },
   {
     icon: Shield,

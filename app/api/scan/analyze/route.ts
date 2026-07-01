@@ -1,5 +1,6 @@
 import { createOctokit } from "@/lib/github";
 import { getGitHubToken, requireUser } from "@/lib/auth";
+import { scanRatelimit } from "@/lib/ratelimit";
 import { createServerClient } from "@/lib/supabase/server";
 import { runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
@@ -24,6 +25,15 @@ export async function POST(request: Request) {
 
     if ("error" in auth) {
       return auth.error;
+    }
+
+    const identifier = `scan_analyze_${auth.user.id}`;
+    const { success } = await scanRatelimit.limit(identifier);
+    if (!success) {
+      return Response.json(
+        { error: "Too many requests. Please wait before scanning again." },
+        { status: 429 }
+      );
     }
 
     const body = (await request.json()) as {

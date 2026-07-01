@@ -1,5 +1,6 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { ensureUserProfile, requireUser } from "@/lib/auth";
+import { scanCreateRatelimit } from "@/lib/ratelimit";
 import type { CreateScanRequest, Tool } from "@/types";
 import { TOOL_OPTIONS } from "@/types";
 
@@ -82,6 +83,15 @@ export async function POST(request: Request) {
     if ("error" in auth) {
       console.log("[scan/create] Auth failed — no valid user session");
       return auth.error;
+    }
+
+    const identifier = `scan_create_${auth.user.id}`;
+    const { success } = await scanCreateRatelimit.limit(identifier);
+    if (!success) {
+      return Response.json(
+        { error: "Too many requests. Please wait before scanning again." },
+        { status: 429 }
+      );
     }
 
     console.log("[scan/create] User authenticated:", {

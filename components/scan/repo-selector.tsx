@@ -76,6 +76,11 @@ export function RepoSelector({
         <p className="text-sm text-muted-foreground">
           Choose the repository you want to scan for security issues.
         </p>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          We request GitHub&apos;s repo scope (required for private repos) but
+          ShipProof&apos;s code only ever calls read endpoints — never write or
+          delete.
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="relative">
