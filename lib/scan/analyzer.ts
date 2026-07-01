@@ -1,5 +1,5 @@
 import { anthropic } from "@/lib/claude";
-import type { Tool } from "@/types";
+import type { DevOpsTools, RepoScanMetadata, Tool } from "@/types";
 
 import { auditDependencies } from "./layers/dependencies";
 import { checkInfrastructure } from "./layers/infrastructure";
@@ -19,6 +19,22 @@ import type { ScanEngineInput, ScanEngineResult, ScanIssue } from "./types";
 
 export type { ScanIssue, ScanEngineInput, ScanEngineResult };
 
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delayMs = 1000
+): Promise<T> {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (i === retries - 1) throw err;
+      await new Promise((r) => setTimeout(r, delayMs * (i + 1)));
+    }
+  }
+  throw new Error("Unreachable");
+}
+
 const COMBINED_SYSTEM_PROMPT = `You are a senior security engineer and DevOps architect auditing a vibe-coded application built by a non-technical founder.
 
 RULES:
@@ -28,6 +44,25 @@ RULES:
 - Be concise: description max 2 sentences
 - Maximum 12 audit issues + exactly 3 threat scenarios = 15 total
 - Respond ONLY with a raw JSON array. No markdown, no explanation, no code fences. Just [ ... ]
+
+IMPORTANT: For observability and DevOps checks, absence of something IS the issue. If you cannot find evidence of error monitoring, CI/CD, or structured logging in the codebase, flag it as a finding. Do not assume these exist just because they were not mentioned in the discovery response.
+
+You will receive metadata about what files were found in this repository. Use this to calibrate your findings:
+
+If hasCI is false and no workflow files found:
+→ Always flag 'No CI/CD pipeline' as DevOps warning
+
+If hasSentry is false and no monitoring in package.json:
+→ Always flag 'No error monitoring' as Observability warning
+
+If hasTests is false:
+→ Always flag 'No automated tests' as Reliability info
+
+If hasLogging is false (no winston/pino/structured logger):
+→ Always flag 'No structured logging' as Observability warning
+
+Never give a perfect score to a pillar unless you have HIGH confidence data for that pillar.
+When in doubt about a pillar, report what's missing rather than assuming everything is fine.
 
 CRITICAL RULE FOR fix_prompt:
 Every fix_prompt must be COMPLETE — it must fix the issue entirely with no hanging follow-up tasks left for the user.
@@ -45,10 +80,31 @@ Rules for fix_prompt:
 - Never write a fix that breaks something else
 - Always include the frontend fix if backend auth changes
 - Always include environment variable updates if adding secrets
-- Maximum 4 steps per fix
+- Maximum 4 steps per fix (SQL fixes are always single-paste — see SQL rules below)
 - Each step must name the exact file
 - For mixed fix types use typed step headers, e.g. STEP 1 — SQL (Supabase): ... and STEP 2 — cursor (backend/main.py): ...
 - fix_prompt must name the exact file, exact library, exact method
+- Fix prompts must never exceed 5 lines total. If it needs more, simplify it.
+
+SQL fix_prompt RULES (mandatory when fix_type = 'sql'):
+These override general multi-step rules for SQL fixes.
+
+RULE 1: Always use IF NOT EXISTS on all CREATE POLICY statements so they are safe to run multiple times without errors. Use "CREATE POLICY IF NOT EXISTS" instead of "CREATE POLICY".
+
+RULE 2: Always use IF NOT EXISTS for indexes: "CREATE INDEX IF NOT EXISTS"
+
+RULE 3: For RLS fix prompts specifically: ONE simple action — just the SQL to paste. No verification steps, no conditional instructions, no "first check if..." language. Format: "Run this in Supabase SQL Editor:" followed by the safe idempotent SQL. (Use the correct SQL editor for the detected database per RULE 5.)
+
+RULE 4: Fix prompts must never exceed 5 lines of instructions. If it needs more than 5 lines, simplify it.
+
+RULE 5: For non-Supabase databases (MySQL, MongoDB, PostgreSQL direct): Detect from the discovery response which database they use and give the equivalent simple one-paste fix. Never assume Supabase if not mentioned in discovery.
+
+Goal for SQL fixes: user reads ONE line of instruction, pastes ONE block of SQL, done. No thinking, no verification, no multiple steps unless absolutely necessary.
+
+Example of a correct RLS SQL fix_prompt:
+'Run this in Supabase SQL Editor:
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY IF NOT EXISTS "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);'
 
 Example of a correct multi-step fix_prompt:
 'STEP 1 — backend/main.py: Add verify_institute_admin_or_teacher middleware to /create-student, /create-teacher, and /delete-user endpoints requiring Authorization: Bearer header.
@@ -58,20 +114,39 @@ STEP 2 — frontend/src/Students.jsx and frontend/src/Teachers.jsx: Update all A
 function buildCombinedUserPrompt(
   discoveryResponse: string,
   codeMarkdown: string,
-  tool: Tool
+  tool: Tool,
+  repoMetadata?: RepoScanMetadata,
+  devopsTools?: DevOpsTools
 ): string {
+  const metadataBlock =
+    repoMetadata && devopsTools
+      ? `## Repository Metadata (from file tree scan)
+- hasCI: ${repoMetadata.hasCI}
+- hasDocker: ${repoMetadata.hasDocker}
+- hasSentry: ${repoMetadata.hasSentry}
+- hasTests: ${repoMetadata.hasTests}
+- hasLinting: ${devopsTools.hasLinting}
+- hasGitHooks: ${devopsTools.hasGitHooks}
+- hasLogging: ${devopsTools.hasLogging}
+- hasMonitoring: ${devopsTools.hasMonitoring}
+
+`
+      : "";
+
   return `## App Discovery (6 Pillars)
 ${discoveryResponse}
 
-## Codebase Files
+${metadataBlock}## Codebase Files
 ${codeMarkdown}
 
 ## Tool Selected
 The user built this with ${tool}. All fix_prompts must be written as prompts to paste into ${tool} specifically.
 
 ## Task 1 — Security Audit (max 12 issues)
-Check ONLY if you see evidence in the code above.
-Skip any check where the code looks fine.
+Check the code above for both problems that exist AND important things that are missing.
+Skip any check where the code clearly has the required setup.
+
+For absence checks: search the codebase files provided. If you cannot find evidence of the required setup, the absence itself is the finding — use confidence 'medium' when you searched the codebase and found nothing, 'high' when you can quote bare API calls or only console.log as evidence.
 
 SECURITY PILLAR:
 - API endpoints with no auth check → critical
@@ -82,6 +157,8 @@ SECURITY PILLAR:
 - No rate limiting on public endpoints → critical
 
 For RLS-related findings: if the discovery response explicitly states RLS policies are configured in the Supabase dashboard (even if not in code), treat this as a WARNING severity 'RLS not version controlled' issue instead of a CRITICAL 'no RLS policies' issue. Only use CRITICAL severity for RLS if there is clear evidence RLS is completely absent or disabled.
+
+When checking for RLS policies, look for SQL files in supabase/migrations/ or similar migration folders. If you find ALTER TABLE ... ENABLE ROW LEVEL SECURITY and CREATE POLICY statements in migration files, treat RLS as properly configured and version controlled. Only flag as Critical if NO evidence of RLS exists anywhere in the codebase including migration files.
 
 DATABASE PILLAR:
 - No pagination on list queries → warning
@@ -94,20 +171,19 @@ PERFORMANCE PILLAR:
 - No caching on repeated expensive queries → warning
 - No CDN for static assets → info
 
-RELIABILITY PILLAR:
-- No error handling on async operations → warning
-- No health check endpoint → warning
-- No retry logic on external API calls → info
-- No timeout configuration → info
+RELIABILITY PILLAR — check for absence:
+- Look for try/catch or error handling on external API calls. If bare API calls found with no error handling → flag as warning
+- Look for timeout configuration on fetch/axios. If none found → flag as info: "No timeout configured on external API calls"
 
-OBSERVABILITY PILLAR:
-- No logging setup → warning
-- No error monitoring like Sentry → warning
+OBSERVABILITY PILLAR — check for absence:
+- Look for any import or mention of: sentry, datadog, newrelic, logtail, axiom, pino, winston in any file. If NONE found → flag as warning: "No error monitoring configured"
+- Look for structured logging setup (not console.log). If only console.log found → flag as warning: "No structured logging — only console.log statements"
+- Look for any health check endpoint (/health, /ping, /api/health). If none found → flag as info: "No health check endpoint"
 
-DEVOPS PILLAR:
-- No environment separation dev/prod → warning
-- No CI/CD pipeline → info
-- No rate limiting middleware → warning
+DEVOPS PILLAR — check for absence:
+- Look for .github/workflows/ directory mention in file tree or any CI/CD config files (.github, .gitlab-ci.yml, circle.yml, Jenkinsfile, vercel.json with build hooks). If NONE found → flag as warning: "No CI/CD pipeline configured"
+- Look for mention of staging, preview, or test environment in any config. If none → flag as info: "No staging environment configured"
+- Look for rate limiting implementation (express-rate-limit, slowapi, upstash, @upstash/ratelimit). If none → flag as warning: "No rate limiting implemented"
 
 ## Task 2 — Threat Modeling (exactly 3)
 Based on what this app does and its stack, add exactly 3 realistic attack scenarios a malicious actor would attempt.
@@ -123,9 +199,16 @@ For each issue add:
 
 Also add a fix_type field to each issue:
 - 'cursor' if the fix requires editing code files in Cursor/Lovable/Bolt/v0
-- 'sql' if the fix requires running SQL in Supabase dashboard or database
+- 'sql' if the fix requires running SQL — use Supabase SQL Editor only if discovery mentions Supabase; otherwise use the correct tool for their database (MySQL, MongoDB, PostgreSQL, etc.)
 - 'terminal' if the fix requires running a command in terminal (npm install, etc)
 - 'manual' if the fix requires manual action in a dashboard or settings page
+
+SQL fix_prompt requirements (fix_type = 'sql'):
+- CREATE POLICY IF NOT EXISTS (never bare CREATE POLICY)
+- CREATE INDEX IF NOT EXISTS for indexes
+- RLS fixes: one line intro ("Run this in [correct SQL editor]:") + idempotent SQL only — no verification or conditional steps
+- Max 5 lines total; one instruction line + one SQL block
+- Match database from discovery — never assume Supabase unless discovery says so
 
 Examples:
 - Adding auth middleware → 'cursor'
@@ -239,7 +322,9 @@ export async function runCombinedAnalysis(
   discoveryResponse: string,
   codeMarkdown: string,
   tool: Tool,
-  fileCount: number
+  fileCount: number,
+  repoMetadata?: RepoScanMetadata,
+  devopsTools?: DevOpsTools
 ): Promise<ScanIssue[]> {
   console.log(
     `[scan/analyzer] Layer 4: Sending ${fileCount} files, ${codeMarkdown.length} chars to Claude`
@@ -248,17 +333,21 @@ export async function runCombinedAnalysis(
   const userPrompt = buildCombinedUserPrompt(
     discoveryResponse,
     codeMarkdown,
-    tool
+    tool,
+    repoMetadata,
+    devopsTools
   );
 
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4000,
-      temperature: 0,
-      system: COMBINED_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
-    });
+    const response = await withRetry(() =>
+      anthropic.messages.create({
+        model: "claude-sonnet-4-6",
+        max_tokens: 4000,
+        temperature: 0,
+        system: COMBINED_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+      })
+    );
 
     const textBlock = response.content.find((block) => block.type === "text");
     if (!textBlock || textBlock.type !== "text") {
@@ -311,7 +400,17 @@ export function normalizeIssues(issues: ScanIssue[], tool: Tool): ScanIssue[] {
 }
 
 export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineResult> {
-  const { files, tool, domain, discoveryResponse, codeMarkdown } = input;
+  const {
+    files,
+    tool,
+    domain,
+    discoveryResponse,
+    codeMarkdown,
+    repoMetadata,
+    devopsTools,
+    fetchedPaths,
+    allFilePaths,
+  } = input;
 
   const { issues: secretIssues, scannedFileCount } = scanSecrets(files, tool);
   console.log(
@@ -373,7 +472,9 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     discoveryResponse,
     codeMarkdown,
     tool,
-    files.length
+    files.length,
+    repoMetadata,
+    devopsTools
   );
 
   const normalized = normalizeIssues(
@@ -404,8 +505,30 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     );
   }
 
+  const scoreContext = {
+    fetchedPaths: fetchedPaths ?? files.map((file) => file.path),
+    allFilePaths: allFilePaths ?? files.map((file) => file.path),
+    metadata: repoMetadata ?? {
+      hasCI: false,
+      hasDocker: false,
+      hasSentry: false,
+      hasTests: false,
+    },
+    devopsTools: devopsTools ?? {
+      hasTests: false,
+      hasLinting: false,
+      hasGitHooks: false,
+      hasSentry: false,
+      hasLogging: false,
+      hasCI: false,
+      hasDocker: false,
+      hasMonitoring: false,
+    },
+    domainProvided: Boolean(domain),
+  };
+
   const scoreBreakdown = calculateHealthScoreBreakdown(filtered);
-  const pillarScores = calculateHealthScores(filtered);
+  const pillarScores = calculateHealthScores(filtered, scoreContext);
 
   const capMessage =
     scoreBreakdown.pillarCap != null
@@ -418,5 +541,5 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
   console.log(`[scan/analyzer] Total issues saved: ${filtered.length}`);
   console.log(`[scan/analyzer] Overall score: ${pillarScores.overall}`);
 
-  return { issues: filtered };
+  return { issues: filtered, pillarScores };
 }

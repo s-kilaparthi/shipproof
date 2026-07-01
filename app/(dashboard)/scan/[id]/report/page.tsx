@@ -10,7 +10,6 @@ import {
   isQuickRescanScan,
   requiresFreshDiscovery,
 } from "@/lib/scan/discovery-cache";
-import { calculateHealthScores } from "@/lib/scan/health-score";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
 import type { PillarScores, Tool } from "@/types";
@@ -44,7 +43,8 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     .from("scan_results")
     .select("*")
     .eq("scan_id", scan.id)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(200);
 
   const issues = normalizeScanIssues(resultRows ?? [], scan.id);
   const pillarScores: PillarScores = parsePillarScores(
@@ -52,10 +52,8 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     issues
   );
 
-  if (scan.overall_score != null && scan.pillar_scores) {
+  if (scan.overall_score != null && scan.pillar_scores && !issues.length) {
     pillarScores.overall = scan.overall_score;
-  } else if (issues.length > 0) {
-    Object.assign(pillarScores, calculateHealthScores(issues));
   }
 
   const scanDate = new Date(
@@ -88,6 +86,7 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
       </Link>
 
       <ReportView
+        scanId={scan.id}
         repoName={scan.repo_name}
         tool={scan.tool_selected as Tool}
         scanDate={scanDate}

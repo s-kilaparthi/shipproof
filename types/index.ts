@@ -36,7 +36,47 @@ export type ScanStatus =
   | "completed"
   | "failed";
 
+export type PillarConfidence = "high" | "medium" | "low" | "insufficient";
+
+export interface PillarScoreDetail {
+  score: number;
+  confidence: PillarConfidence;
+}
+
+export interface DevOpsTools {
+  hasTests: boolean;
+  hasLinting: boolean;
+  hasGitHooks: boolean;
+  hasSentry: boolean;
+  hasLogging: boolean;
+  hasCI: boolean;
+  hasDocker: boolean;
+  hasMonitoring: boolean;
+}
+
+export interface RepoScanMetadata {
+  hasCI: boolean;
+  hasDocker: boolean;
+  hasSentry: boolean;
+  hasTests: boolean;
+}
+
 export interface PillarScores {
+  overall: number;
+  scoredPillarCount: number;
+  totalPillarCount: number;
+  security: PillarScoreDetail;
+  database: PillarScoreDetail;
+  performance: PillarScoreDetail;
+  reliability: PillarScoreDetail;
+  observability: PillarScoreDetail;
+  devops: PillarScoreDetail;
+  infrastructure: PillarScoreDetail;
+  dependencies: PillarScoreDetail;
+}
+
+/** @deprecated Legacy flat pillar scores stored before confidence support */
+export interface LegacyPillarScores {
   overall: number;
   security: number;
   database: number;

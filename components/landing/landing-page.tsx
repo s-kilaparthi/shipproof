@@ -677,16 +677,19 @@ export function LandingPage() {
                 You build it. We make sure it runs.
               </p>
             </div>
-            <div className="flex gap-6 text-sm text-muted-foreground">
-              <Link href="/login" className="text-foreground hover:underline">
+            <div className="flex flex-wrap gap-6 text-sm text-muted-foreground">
+              <Link href="/privacy" className="text-foreground hover:underline">
                 Privacy
               </Link>
-              <Link href="/login" className="text-foreground hover:underline">
+              <Link href="/terms" className="text-foreground hover:underline">
                 Terms
               </Link>
-              <Link href="/login" className="text-foreground hover:underline">
+              <a
+                href="mailto:privacy@shipproof.app"
+                className="text-foreground hover:underline"
+              >
                 Contact
-              </Link>
+              </a>
             </div>
             <p className="text-sm text-muted-foreground">
               Built with ❤️ for the vibe coding generation

@@ -6,8 +6,12 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next") ?? "/dashboard";
-  const next =
-    rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/dashboard";
+  const ALLOWED_NEXT_PATHS = ["/dashboard", "/scan"];
+  const next = ALLOWED_NEXT_PATHS.some(
+    (allowed) => rawNext === allowed || rawNext.startsWith(allowed + "/")
+  )
+    ? rawNext
+    : "/dashboard";
 
   if (code) {
     const cookieStore = cookies();

@@ -4,13 +4,14 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  Circle,
   Code,
   Copy,
   Database,
   Settings,
   Terminal,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +26,14 @@ import {
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
 import { getSeverityColor } from "@/lib/scan/health-score";
+import { cn } from "@/lib/utils";
 import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 
 interface IssueCardProps {
   issue: ScanIssueRow;
   tool: Tool;
+  isFixed?: boolean;
+  onToggleFixed?: () => void;
 }
 
 function confidenceLabel(confidence?: Confidence): string {
@@ -139,7 +143,12 @@ function TerminalFixDisplay({
   );
 }
 
-export function IssueCard({ issue, tool }: IssueCardProps) {
+export function IssueCard({
+  issue,
+  tool,
+  isFixed = false,
+  onToggleFixed,
+}: IssueCardProps) {
   const [fixExpanded, setFixExpanded] = useState(false);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -153,6 +162,12 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
+
+  useEffect(() => {
+    if (isFixed) {
+      setFixExpanded(false);
+    }
+  }, [isFixed]);
 
   const handleCopySingle = async () => {
     try {
@@ -219,7 +234,11 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
   };
 
   return (
-    <Card>
+    <Card
+      className={cn(
+        isFixed && "border-l-4 border-green-500 opacity-75"
+      )}
+    >
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="space-y-1">
@@ -236,7 +255,14 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
               >
                 {confidenceLabel(issue.confidence)}
               </Badge>
-              <CardTitle className="text-base text-foreground">{issue.issue_name}</CardTitle>
+              <CardTitle
+                className={cn(
+                  "text-base text-foreground",
+                  isFixed && "line-through"
+                )}
+              >
+                {issue.issue_name}
+              </CardTitle>
             </div>
             {(issue.file_path || issue.line_number) && (
               <p className="font-mono text-xs text-muted-foreground">
@@ -272,22 +298,23 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
           </div>
         )}
 
-        <div>
-          <button
-            type="button"
-            onClick={() => setFixExpanded(!fixExpanded)}
-            className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm font-medium hover:bg-muted/50"
-          >
-            <span>Fix Prompt</span>
-            {fixExpanded ? (
-              <ChevronUp className="size-4" />
-            ) : (
-              <ChevronDown className="size-4" />
-            )}
-          </button>
+        {!isFixed ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => setFixExpanded(!fixExpanded)}
+              className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm font-medium hover:bg-muted/50"
+            >
+              <span>Fix Prompt</span>
+              {fixExpanded ? (
+                <ChevronUp className="size-4" />
+              ) : (
+                <ChevronDown className="size-4" />
+              )}
+            </button>
 
-          {fixExpanded && (
-            <div className="mt-3 space-y-3">
+            {fixExpanded && (
+              <div className="mt-3 space-y-3">
               {isMultiStep ? (
                 <>
                   <p className="text-xs text-muted-foreground">
@@ -424,7 +451,33 @@ export function IssueCard({ issue, tool }: IssueCardProps) {
               )}
             </div>
           )}
-        </div>
+          </div>
+        ) : null}
+
+        {onToggleFixed ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className={cn(
+              "gap-2",
+              isFixed && "border-green-200 text-green-600 dark:border-green-800"
+            )}
+            onClick={onToggleFixed}
+          >
+            {isFixed ? (
+              <>
+                <Check className="size-4" />
+                ✓ Fixed — Undo
+              </>
+            ) : (
+              <>
+                <Circle className="size-4" />
+                Mark as Fixed
+              </>
+            )}
+          </Button>
+        ) : null}
       </CardContent>
     </Card>
   );

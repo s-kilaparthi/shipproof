@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Info, RefreshCw, Share2, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { FixProgressTracker } from "@/components/scan/fix-progress-tracker";
 import { IssueCard } from "@/components/scan/issue-card";
+import { PillarScoreCard } from "@/components/scan/pillar-score-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,9 +16,16 @@ import {
   countIssuesBySeverity,
   getHealthScoreBg,
   getHealthScoreColor,
+  getPillarDisplayScore,
   getScoreLabel,
 } from "@/lib/scan/health-score";
 import { groupIssuesByPillar } from "@/lib/scan/results";
+import {
+  clearFixedIssues,
+  markIssueFixed,
+  readFixedIssueIds,
+  unmarkIssueFixed,
+} from "@/lib/scan/fixed-issues";
 import {
   ALL_PILLARS,
   DISPLAY_PILLARS,
@@ -26,6 +36,7 @@ import {
 } from "@/types";
 
 interface ReportViewProps {
+  scanId: string;
   repoName: string;
   tool: Tool;
   scanDate: string;
@@ -38,6 +49,7 @@ interface ReportViewProps {
 }
 
 export function ReportView({
+  scanId,
   repoName,
   tool,
   scanDate,
@@ -49,9 +61,32 @@ export function ReportView({
   canQuickRescan = false,
 }: ReportViewProps) {
   const router = useRouter();
+  const [fixedIssueIds, setFixedIssueIds] = useState<string[]>([]);
   const counts = countIssuesBySeverity(issues);
   const grouped = groupIssuesByPillar(issues);
   const scoreLabel = getScoreLabel(pillarScores.overall);
+  const rescanHref = `/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`;
+
+  useEffect(() => {
+    setFixedIssueIds(readFixedIssueIds(scanId));
+  }, [scanId]);
+
+  const handleToggleFixed = useCallback(
+    (issueId: string) => {
+      setFixedIssueIds((current) => {
+        const isCurrentlyFixed = current.includes(issueId);
+        const next = isCurrentlyFixed
+          ? unmarkIssueFixed(scanId, issueId)
+          : markIssueFixed(scanId, issueId);
+        return next;
+      });
+    },
+    [scanId]
+  );
+
+  const handleRescanClick = useCallback(() => {
+    clearFixedIssues(scanId);
+  }, [scanId]);
 
   const scrollToPillar = (pillar: DisplayPillar) => {
     document.getElementById(`pillar-${pillar}`)?.scrollIntoView({
@@ -116,28 +151,38 @@ export function ReportView({
           >
             {scoreLabel}
           </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Based on {pillarScores.scoredPillarCount ?? 0} of{" "}
+            {pillarScores.totalPillarCount ?? 8} pillars with sufficient data
+          </p>
         </div>
       </div>
 
       {/* Pillar score cards */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {DISPLAY_PILLARS.map(({ id, label }) => (
-          <button
+          <PillarScoreCard
             key={id}
-            type="button"
+            pillarId={id}
+            label={label}
+            pillarScores={pillarScores}
             onClick={() => scrollToPillar(id)}
-            className={`rounded-xl border p-4 text-left transition-all hover:shadow-sm ${getHealthScoreBg(pillarScores[id])}`}
-          >
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {label}
-            </p>
-            <p
-              className={`mt-1 text-2xl font-bold ${getHealthScoreColor(pillarScores[id])}`}
-            >
-              {pillarScores[id]}
-            </p>
-          </button>
+          />
         ))}
+      </div>
+
+      <div className="mb-8 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+        <p className="font-medium text-foreground">About this report</p>
+        <p className="mt-2 leading-relaxed">
+          ShipProof analyzes up to 15 files from your repository. Pillars marked
+          ⚠️ or — had limited data available. Add more configuration files to
+          your repo or provide your domain for a more complete assessment.
+        </p>
+        <p className="mt-2">
+          <a href="/#faq" className="underline underline-offset-2 hover:text-foreground">
+            Learn what we check →
+          </a>
+        </p>
       </div>
 
       {/* Issues by pillar */}
@@ -156,6 +201,13 @@ export function ReportView({
         </Card>
       ) : (
         <div className="space-y-10">
+          <FixProgressTracker
+            fixedCount={fixedIssueIds.length}
+            totalCount={issues.length}
+            rescanHref={rescanHref}
+            onRescanClick={handleRescanClick}
+          />
+
           {ALL_PILLARS.filter(({ id }) => grouped[id].length > 0).map(
             ({ id, label }) => {
               const displayId = DISPLAY_PILLARS.some((p) => p.id === id)
@@ -173,12 +225,18 @@ export function ReportView({
                       variant="outline"
                       className={getHealthScoreBg(pillarScores[id])}
                     >
-                      Score: {pillarScores[id]}
+                      Score: {getPillarDisplayScore(pillarScores[id])}
                     </Badge>
                   </div>
                   <div className="space-y-4">
                     {grouped[id].map((issue) => (
-                      <IssueCard key={issue.id} issue={issue} tool={tool} />
+                      <IssueCard
+                        key={issue.id}
+                        issue={issue}
+                        tool={tool}
+                        isFixed={fixedIssueIds.includes(issue.id)}
+                        onToggleFixed={() => handleToggleFixed(issue.id)}
+                      />
                     ))}
                   </div>
                 </section>
@@ -200,7 +258,8 @@ export function ReportView({
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
-            href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`}
+            href={rescanHref}
+            onClick={handleRescanClick}
           >
             <Button variant="outline" className="w-full gap-2 sm:w-auto">
               <RefreshCw className="size-4" />

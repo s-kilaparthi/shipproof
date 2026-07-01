@@ -23,8 +23,13 @@ export interface ScanEngineInput {
   files: { path: string; content: string }[];
   tool: import("@/types").Tool;
   domain?: string | null;
+  repoMetadata?: import("@/types").RepoScanMetadata;
+  devopsTools?: import("@/types").DevOpsTools;
+  fetchedPaths?: string[];
+  allFilePaths?: string[];
 }
 
 export interface ScanEngineResult {
   issues: ScanIssue[];
+  pillarScores: import("@/types").PillarScores;
 }

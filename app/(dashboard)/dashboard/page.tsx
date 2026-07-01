@@ -11,7 +11,6 @@ import {
   getDiscoveryReferenceDate,
   requiresFreshDiscovery,
 } from "@/lib/scan/discovery-cache";
-import { calculateHealthScores } from "@/lib/scan/health-score";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -36,15 +35,14 @@ export default async function DashboardPage() {
       const { data: resultRows } = await supabase
         .from("scan_results")
         .select("*")
-        .eq("scan_id", scan.id);
+        .eq("scan_id", scan.id)
+        .limit(200);
 
       const issues = normalizeScanIssues(resultRows ?? [], scan.id);
       const pillarScores = parsePillarScores(scan.pillar_scores, issues);
 
       if (scan.overall_score != null) {
         pillarScores.overall = scan.overall_score;
-      } else if (issues.length > 0) {
-        Object.assign(pillarScores, calculateHealthScores(issues));
       }
 
       return { scan, issues, pillarScores };

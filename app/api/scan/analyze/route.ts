@@ -8,7 +8,6 @@ import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
 import { parseFixPrompt } from "@/lib/scan/fix-parser";
 import { generateFingerprint } from "@/lib/scan/fingerprint";
 import { fetchTargetedFiles } from "@/lib/scan/github-files";
-import { calculateHealthScores } from "@/lib/scan/health-score";
 import type { Tool } from "@/types";
 
 export const dynamic = "force-dynamic";
@@ -50,7 +49,9 @@ export async function POST(request: Request) {
 
     const { data: scan, error: scanError } = await supabase
       .from("scans")
-      .select("*")
+      .select(
+        "id, user_id, repo_name, repo_url, tool_selected, discovery_response, discovery_cached_at, used_cached_discovery, domain, status, created_at"
+      )
       .eq("id", scanId)
       .eq("user_id", auth.user.id)
       .single();
@@ -91,24 +92,31 @@ export async function POST(request: Request) {
     const tool = scan.tool_selected as Tool;
 
     const octokit = createOctokit(githubToken);
-    const files = await fetchTargetedFiles(octokit, scan.repo_name, parsed, 8);
+    const fetchResult = await fetchTargetedFiles(
+      octokit,
+      scan.repo_name,
+      parsed,
+      15
+    );
 
-    console.log(`[scan/analyze] Fetched ${files.length} targeted files`);
+    console.log(`[scan/analyze] Fetched ${fetchResult.files.length} targeted files`);
 
     const codeMarkdown =
-      files.length > 0
-        ? formatFilesAsMarkdown(files)
+      fetchResult.files.length > 0
+        ? formatFilesAsMarkdown(fetchResult.files)
         : "No code files could be fetched from the repository.";
 
-    const { issues } = await runFullScan({
+    const { issues, pillarScores } = await runFullScan({
       discoveryResponse,
       codeMarkdown,
-      files,
+      files: fetchResult.files,
       tool,
       domain: scan.domain,
+      repoMetadata: fetchResult.metadata,
+      devopsTools: fetchResult.devopsTools,
+      fetchedPaths: fetchResult.fetchedPaths,
+      allFilePaths: fetchResult.allFilePaths,
     });
-
-    const pillarScores = calculateHealthScores(issues);
     const discoveryCachedAt = useCachedDiscovery
       ? (body.cached_discovery_at ?? scan.created_at)
       : new Date().toISOString();
@@ -144,9 +152,12 @@ export async function POST(request: Request) {
         };
       });
 
+      const MAX_ISSUES = 200;
+      const cappedRows = rows.slice(0, MAX_ISSUES);
+
       const { error: insertError } = await supabase
         .from("scan_results")
-        .insert(rows);
+        .insert(cappedRows);
 
       if (insertError) {
         console.error("[scan/analyze] Insert error:", insertError);

@@ -21,7 +21,54 @@ const EXCLUDED_PATH_PATTERNS = [
 const EXCLUDED_EXTENSIONS =
   /\.(test|spec)\.(ts|js|tsx|jsx)$|\.(md|mdx|txt|d\.ts|css|scss|svg|png|jpg|ico)$|^(package-lock\.json|yarn\.lock)$/;
 
+const DEVOPS_PRIORITY_PATTERNS: RegExp[] = [
+  /(^|\/)\\.github\/workflows\/[^/]+\.ya?ml$/i,
+  /(^|\/)vercel\.json$/,
+  /(^|\/)railway\.toml$/,
+  /(^|\/)fly\.toml$/,
+  /(^|\/)docker-compose\.ya?ml$/,
+  /(^|\/)Dockerfile$/,
+  /(^|\/)\\.dockerignore$/,
+  /(^|\/)netlify\.toml$/,
+  /(^|\/)render\.ya?ml$/,
+  /(^|\/)\\.circleci\/config\.ya?ml$/,
+];
+
+const OBSERVABILITY_PRIORITY_PATTERNS: RegExp[] = [
+  /(^|\/)sentry\.config\.js$/,
+  /(^|\/)sentry\.client\.config\.js$/,
+  /(^|\/)sentry\.server\.config\.js$/,
+  /(^|\/)datadog\.config\.js$/,
+  /(^|\/)pino\.config\.js$/,
+  /(^|\/)winston\.config\.js$/,
+  /(^|\/)logtail\.config\.js$/,
+  /monitor/i,
+  /logger/i,
+];
+
+const CONFIG_PRIORITY_PATTERNS: RegExp[] = [
+  /(^|\/)\\.env\.example$/,
+  /(^|\/)jest\.config\.(js|ts|mjs|cjs)$/,
+  /(^|\/)vitest\.config\.(ts|js|mjs)$/,
+  /(^|\/)\\.eslintrc(\.(js|json|yaml|yml))?$/,
+  /(^|\/)eslint\.config\.(js|ts|mjs|cjs)$/,
+  /(^|\/)\\.husky\//,
+];
+
+const MIGRATION_PRIORITY_PATTERNS: RegExp[] = [
+  /(^|\/)supabase\/migrations\/[^/]+\.sql$/,
+  /(^|\/)supabase\/seed\.sql$/,
+  /(^|\/)database\/migrations\/[^/]+\.sql$/,
+  /(^|\/)prisma\/migrations\/.+\.sql$/,
+  /_rls\.sql$/,
+  /_policies\.sql$/,
+];
+
 const MANDATORY_PATTERNS: RegExp[] = [
+  ...MIGRATION_PRIORITY_PATTERNS,
+  ...DEVOPS_PRIORITY_PATTERNS,
+  ...OBSERVABILITY_PRIORITY_PATTERNS,
+  ...CONFIG_PRIORITY_PATTERNS,
   /middleware\.(ts|js)$/,
   /auth/i,
   /app\/api\//,
@@ -57,11 +104,16 @@ const STACK_PATTERNS: Record<string, FilePattern[]> = {
     { pattern: "routes/**", priority: 90 },
   ],
   supabase: [
+    { pattern: "supabase/migrations/**", priority: 100 },
+    { pattern: "supabase/seed.sql", priority: 100 },
+    { pattern: "database/migrations/**", priority: 100 },
+    { pattern: "prisma/migrations/**", priority: 100 },
+    { pattern: "**/*_rls.sql", priority: 100 },
+    { pattern: "**/*_policies.sql", priority: 100 },
     { pattern: "**/supabase/**", priority: 95 },
     { pattern: "**/*rls*", priority: 90 },
     { pattern: "**/*policy*", priority: 90 },
     { pattern: "**/*schema*", priority: 90 },
-    { pattern: "supabase/migrations/**", priority: 95 },
   ],
   express: [
     { pattern: "server.js", priority: 100 },
@@ -72,6 +124,29 @@ const STACK_PATTERNS: Record<string, FilePattern[]> = {
   firebase: [
     { pattern: "firestore.rules", priority: 100 },
     { pattern: "functions/**", priority: 95 },
+  ],
+  devops: [
+    { pattern: ".github/workflows/**", priority: 100 },
+    { pattern: "vercel.json", priority: 100 },
+    { pattern: "railway.toml", priority: 95 },
+    { pattern: "fly.toml", priority: 95 },
+    { pattern: "docker-compose.yml", priority: 95 },
+    { pattern: "Dockerfile", priority: 95 },
+    { pattern: ".dockerignore", priority: 90 },
+    { pattern: "netlify.toml", priority: 90 },
+    { pattern: "render.yaml", priority: 90 },
+    { pattern: ".circleci/config.yml", priority: 95 },
+  ],
+  observability: [
+    { pattern: "sentry.config.js", priority: 100 },
+    { pattern: "sentry.client.config.js", priority: 100 },
+    { pattern: "sentry.server.config.js", priority: 100 },
+    { pattern: "datadog.config.js", priority: 100 },
+    { pattern: "pino.config.js", priority: 95 },
+    { pattern: "winston.config.js", priority: 95 },
+    { pattern: "logtail.config.js", priority: 95 },
+    { pattern: "**/*monitor*", priority: 90 },
+    { pattern: "**/*logger*", priority: 90 },
   ],
 };
 
@@ -86,6 +161,10 @@ export function isExcludedFile(filePath: string): boolean {
 
 export function isMandatoryPriorityFile(filePath: string): boolean {
   return MANDATORY_PATTERNS.some((p) => p.test(filePath));
+}
+
+export function isMigrationPriorityFile(filePath: string): boolean {
+  return MIGRATION_PRIORITY_PATTERNS.some((p) => p.test(filePath));
 }
 
 export function isCriticalFile(filePath: string): boolean {
@@ -154,6 +233,7 @@ function detectStacks(parsed: ParsedDiscovery): string[] {
   if (text.includes("supabase")) stacks.push("supabase");
   if (text.includes("express") || text.includes("node")) stacks.push("express");
   if (text.includes("firebase")) stacks.push("firebase");
+  stacks.push("devops", "observability");
   if (stacks.length === 0) stacks.push("nextjs");
 
   return stacks;
@@ -189,9 +269,15 @@ function scoreFile(filePath: string, parsed: ParsedDiscovery, stacks: string[]):
   }
 
   const lower = filePath.toLowerCase();
-  if (["supabase", "rls", "policy", "schema"].some((k) => lower.includes(k))) {
+  if (
+    ["supabase", "rls", "policy", "schema", "migrations"].some((k) =>
+      lower.includes(k)
+    )
+  ) {
     score += 20;
   }
+
+  if (isMigrationPriorityFile(filePath)) score += 50;
 
   return score;
 }
@@ -199,7 +285,7 @@ function scoreFile(filePath: string, parsed: ParsedDiscovery, stacks: string[]):
 export function selectTargetFiles(
   allFiles: string[],
   parsed: ParsedDiscovery,
-  maxFiles = 8
+  maxFiles = 15
 ): string[] {
   const eligible = allFiles.filter((f) => !isExcludedFile(f));
   const stacks = detectStacks(parsed);

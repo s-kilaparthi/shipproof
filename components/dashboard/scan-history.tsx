@@ -6,10 +6,12 @@ import { RefreshCw, Trash2, Zap } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { FixedIssueCount } from "@/components/dashboard/fixed-issue-count";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDashboardScoreBadgeClass, getPillarDotColor } from "@/lib/scan/health-score";
+import { getDashboardScoreBadgeClass, getPillarDisplayScore, getPillarDotColor } from "@/lib/scan/health-score";
+import { clearFixedIssues } from "@/lib/scan/fixed-issues";
 import { DISPLAY_PILLARS, type PillarScores, type Tool } from "@/types";
 
 interface ScanRecord {
@@ -204,7 +206,11 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
                             minute: "2-digit",
                           })}
                           {issueCount > 0 && (
-                            <> · {issueCount} issue{issueCount === 1 ? "" : "s"}</>
+                            <>
+                              {" "}
+                              · {issueCount} issue{issueCount === 1 ? "" : "s"}
+                              <FixedIssueCount scanId={scan.id} />
+                            </>
                           )}
                         </p>
                         {scan.status === "completed" && (
@@ -212,7 +218,7 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
                             {DISPLAY_PILLARS.map(({ id, label }) => (
                               <span
                                 key={id}
-                                title={`${label}: ${pillarScores[id]}`}
+                                title={`${label}: ${getPillarDisplayScore(pillarScores[id])}`}
                                 className={`size-2.5 shrink-0 rounded-full ${getPillarDotColor(pillarScores[id])}`}
                               />
                             ))}
@@ -235,6 +241,7 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
                             </Link>
                             <Link
                               href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${rescanMode}`}
+                              onClick={() => clearFixedIssues(scan.id)}
                             >
                               <Button variant="outline" size="sm" className="gap-1.5">
                                 {canQuickRescan ? (

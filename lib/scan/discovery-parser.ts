@@ -1,3 +1,5 @@
+import type { DevOpsTools } from "@/types";
+
 export interface ParsedDiscovery {
   raw: string;
   techStack: {
@@ -13,6 +15,70 @@ export interface ParsedDiscovery {
   environmentVariables: string[];
   securityMeasures: string[];
   summary: string;
+  devopsTools: DevOpsTools;
+}
+
+export const EMPTY_DEVOPS_TOOLS: DevOpsTools = {
+  hasTests: false,
+  hasLinting: false,
+  hasGitHooks: false,
+  hasSentry: false,
+  hasLogging: false,
+  hasCI: false,
+  hasDocker: false,
+  hasMonitoring: false,
+};
+
+function collectDependencyNames(pkg: Record<string, unknown>): string[] {
+  const names: string[] = [];
+  for (const key of ["dependencies", "devDependencies", "peerDependencies"]) {
+    const deps = pkg[key];
+    if (deps && typeof deps === "object") {
+      names.push(...Object.keys(deps as Record<string, unknown>));
+    }
+  }
+  return names;
+}
+
+export function parseDevOpsToolsFromPackageJson(
+  content: string,
+  treeFlags?: Partial<DevOpsTools>
+): DevOpsTools {
+  try {
+    const pkg = JSON.parse(content) as Record<string, unknown>;
+    const depNames = collectDependencyNames(pkg).map((name) => name.toLowerCase());
+    const scripts =
+      pkg.scripts && typeof pkg.scripts === "object"
+        ? Object.keys(pkg.scripts as Record<string, unknown>).join(" ").toLowerCase()
+        : "";
+
+    const hasInDeps = (patterns: RegExp[]) =>
+      depNames.some((name) => patterns.some((pattern) => pattern.test(name)));
+
+    return {
+      hasTests:
+        treeFlags?.hasTests ??
+        (hasInDeps([/^jest$/, /^vitest$/, /^mocha$/, /^@playwright/]) ||
+          /test|vitest|jest/.test(scripts)),
+      hasLinting:
+        treeFlags?.hasLinting ??
+        hasInDeps([/^eslint$/, /^prettier$/, /^@typescript-eslint/]),
+      hasGitHooks:
+        treeFlags?.hasGitHooks ?? hasInDeps([/^husky$/, /^lint-staged$/]),
+      hasSentry:
+        treeFlags?.hasSentry ?? hasInDeps([/^@sentry\//, /^@sentry$/]),
+      hasLogging:
+        treeFlags?.hasLogging ??
+        hasInDeps([/^winston$/, /^pino$/, /^@logtail/, /^logtail$/]),
+      hasCI: treeFlags?.hasCI ?? false,
+      hasDocker: treeFlags?.hasDocker ?? false,
+      hasMonitoring:
+        treeFlags?.hasMonitoring ??
+        hasInDeps([/^dd-trace$/, /^newrelic$/, /^@datadog/]),
+    };
+  } catch {
+    return { ...EMPTY_DEVOPS_TOOLS, ...treeFlags };
+  }
 }
 
 function extractSection(text: string, patterns: RegExp[]): string {
@@ -78,6 +144,7 @@ export function parseDiscoveryResponse(discoveryResponse: string): ParsedDiscove
     environmentVariables: extractListItems(envRaw),
     securityMeasures: extractListItems(securityRaw),
     summary: summaryRaw || "No summary provided",
+    devopsTools: { ...EMPTY_DEVOPS_TOOLS },
   };
 }
 

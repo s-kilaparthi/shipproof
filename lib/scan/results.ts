@@ -1,5 +1,5 @@
 import type { Confidence, FixStep, FixType, Pillar, PillarScores, ScanIssueRow } from "@/types";
-import { calculateHealthScores } from "./health-score";
+import { calculateHealthScores, isLegacyPillarScores } from "./health-score";
 import { parseFixPrompt } from "./fix-parser";
 import { normalizeFixType } from "./fix-type-utils";
 
@@ -114,6 +114,31 @@ export function parsePillarScores(
   issues: ScanIssueRow[]
 ): PillarScores {
   if (raw && typeof raw === "object" && "overall" in (raw as object)) {
+    if (isLegacyPillarScores(raw)) {
+      return calculateHealthScores(issues, {
+        fetchedPaths: [],
+        allFilePaths: [],
+        metadata: {
+          hasCI: false,
+          hasDocker: false,
+          hasSentry: false,
+          hasTests: false,
+        },
+        devopsTools: {
+          hasTests: false,
+          hasLinting: false,
+          hasGitHooks: false,
+          hasSentry: false,
+          hasLogging: false,
+          hasCI: false,
+          hasDocker: false,
+          hasMonitoring: false,
+        },
+        domainProvided: false,
+        legacyScores: raw,
+      });
+    }
+
     return raw as PillarScores;
   }
 
