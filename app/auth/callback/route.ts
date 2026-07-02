@@ -52,10 +52,28 @@ export async function GET(request: Request) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
+      if (error) {
+        console.error(
+          "[auth/callback] Exchange error:",
+          error.message,
+          error.status,
+          error.code
+        );
+        return NextResponse.redirect(
+          `${origin}/login?error=auth&reason=${error.code || "unknown"}`
+        );
+      }
+
+      console.log("[auth/callback] Success, user:", data.user?.email);
       return NextResponse.redirect(`${origin}/dashboard`);
+    } catch (err) {
+      console.error("[auth/callback] Unexpected error:", err);
+      return NextResponse.redirect(
+        `${origin}/login?error=auth&reason=unexpected`
+      );
     }
   }
 
