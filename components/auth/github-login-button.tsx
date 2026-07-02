@@ -27,12 +27,16 @@ export function GitHubLoginButton() {
   const handleLogin = async () => {
     setLoading(true);
 
+    const redirectTo = process.env.NEXT_PUBLIC_SITE_URL
+      ? `${process.env.NEXT_PUBLIC_SITE_URL.replace(/\/$/, "")}/auth/callback`
+      : `${window.location.origin}/auth/callback`;
+
     const supabase = createBrowserClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "github",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
         scopes: "read:user repo",
+        redirectTo,
       },
     });
 
