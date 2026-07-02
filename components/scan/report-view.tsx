@@ -13,6 +13,7 @@ import {
   PillarIssueGroup,
 } from "@/components/scan/pillar-issue-group";
 import { PillarScoreCard } from "@/components/scan/pillar-score-card";
+import { SkippedIssuesSection } from "@/components/scan/skipped-issues-section";
 import { Button } from "@/components/ui/button";
 import { countIssuesBySeverity, getScoreLabel } from "@/lib/scan/health-score";
 import { groupIssuesByPillar } from "@/lib/scan/results";
@@ -22,6 +23,13 @@ import {
   readFixedIssueIds,
   unmarkIssueFixed,
 } from "@/lib/scan/fixed-issues";
+import {
+  clearSkippedIssues,
+  markIssueSkipped,
+  readSkippedIssues,
+  unmarkIssueSkipped,
+  type SkipReason,
+} from "@/lib/scan/skipped-issues";
 import { cn } from "@/lib/utils";
 import {
   ALL_PILLARS,
@@ -69,8 +77,10 @@ function getScoreCircleClasses(score: number): {
 
 function SummaryCounts({
   counts,
+  skippedCount = 0,
 }: {
   counts: ReturnType<typeof countIssuesBySeverity>;
+  skippedCount?: number;
 }) {
   const parts: ReactNode[] = [];
 
@@ -97,16 +107,23 @@ function SummaryCounts({
   }
 
   return (
-    <p className="flex flex-wrap items-center gap-x-2 text-sm">
-      {parts.map((part, index) => (
-        <span key={index} className="inline-flex items-center gap-2">
-          {index > 0 ? (
-            <span className="text-gray-300 dark:text-gray-600">·</span>
-          ) : null}
-          {part}
-        </span>
-      ))}
-    </p>
+    <div className="space-y-1">
+      <p className="flex flex-wrap items-center gap-x-2 text-sm">
+        {parts.map((part, index) => (
+          <span key={index} className="inline-flex items-center gap-2">
+            {index > 0 ? (
+              <span className="text-gray-300 dark:text-gray-600">·</span>
+            ) : null}
+            {part}
+          </span>
+        ))}
+      </p>
+      {skippedCount > 0 ? (
+        <p className="text-xs text-gray-400 dark:text-gray-500">
+          ({skippedCount} issue{skippedCount === 1 ? "" : "s"} skipped)
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -126,16 +143,25 @@ export function ReportView({
 }: ReportViewProps) {
   const router = useRouter();
   const [fixedIssueIds, setFixedIssueIds] = useState<string[]>([]);
-  const counts = countIssuesBySeverity(issues);
+  const [skippedIssues, setSkippedIssues] = useState<Record<string, SkipReason>>({});
+  const skippedIssueIds = useMemo(
+    () => Object.keys(skippedIssues),
+    [skippedIssues]
+  );
+  const activeIssues = useMemo(
+    () => issues.filter((issue) => !skippedIssueIds.includes(issue.id)),
+    [issues, skippedIssueIds]
+  );
+  const counts = countIssuesBySeverity(activeIssues);
   const grouped = groupIssuesByPillar(issues);
   const scoreLabel = getScoreLabel(pillarScores.overall);
   const scoreCircle = getScoreCircleClasses(pillarScores.overall);
   const rescanHref = `/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`;
 
-  const initialExpanded = useMemo(
-    () => computeInitialExpandedPillars(grouped, ALL_PILLARS),
-    [grouped]
-  );
+  const initialExpanded = useMemo(() => {
+    const activeGrouped = groupIssuesByPillar(activeIssues);
+    return computeInitialExpandedPillars(activeGrouped, ALL_PILLARS);
+  }, [activeIssues]);
 
   const [expandedPillars, setExpandedPillars] = useState<Set<Pillar>>(
     () => initialExpanded
@@ -143,6 +169,7 @@ export function ReportView({
 
   useEffect(() => {
     setFixedIssueIds(readFixedIssueIds(scanId));
+    setSkippedIssues(readSkippedIssues(scanId));
   }, [scanId]);
 
   const handleToggleFixed = useCallback(
@@ -157,8 +184,23 @@ export function ReportView({
     [scanId]
   );
 
+  const handleSkipIssue = useCallback(
+    (issueId: string, reason: SkipReason) => {
+      setSkippedIssues(markIssueSkipped(scanId, issueId, reason));
+    },
+    [scanId]
+  );
+
+  const handleUnskipIssue = useCallback(
+    (issueId: string) => {
+      setSkippedIssues(unmarkIssueSkipped(scanId, issueId));
+    },
+    [scanId]
+  );
+
   const handleRescanClick = useCallback(() => {
     clearFixedIssues(scanId);
+    clearSkippedIssues(scanId);
   }, [scanId]);
 
   const togglePillar = (pillarId: Pillar) => {
@@ -258,9 +300,9 @@ export function ReportView({
       {issues.length > 0 ? (
         <div className="mb-6 space-y-2">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-            {counts.total} total issue{counts.total === 1 ? "" : "s"} found
+            {issues.length} total issue{issues.length === 1 ? "" : "s"} found
           </h2>
-          <SummaryCounts counts={counts} />
+          <SummaryCounts counts={counts} skippedCount={skippedIssueIds.length} />
         </div>
       ) : null}
 
@@ -279,7 +321,7 @@ export function ReportView({
         <>
           <FixProgressTracker
             fixedCount={fixedIssueIds.length}
-            totalCount={issues.length}
+            totalCount={activeIssues.length}
             rescanHref={rescanHref}
             onRescanClick={handleRescanClick}
           />
@@ -295,12 +337,22 @@ export function ReportView({
                 tool={tool}
                 discoveryResponse={discoveryResponse}
                 fixedIssueIds={fixedIssueIds}
+                skippedIssueIds={skippedIssueIds}
                 isOpen={expandedPillars.has(id)}
                 onToggle={() => togglePillar(id)}
                 onToggleFixed={handleToggleFixed}
+                onSkipIssue={handleSkipIssue}
               />
             ))}
           </div>
+
+          <SkippedIssuesSection
+            issues={issues}
+            skippedIssues={skippedIssues}
+            tool={tool}
+            discoveryResponse={discoveryResponse}
+            onUnskip={handleUnskipIssue}
+          />
         </>
       )}
 

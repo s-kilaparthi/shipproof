@@ -1,4 +1,5 @@
 import type { FetchedFile } from "../github-files";
+import { buildDependencyVulnerabilityFixPrompt } from "../dependency-fix-utils";
 import type { ScanIssue } from "../types";
 
 interface PackageEntry {
@@ -149,8 +150,15 @@ export async function auditDependencies(
           file_path: pkg.ecosystem === "npm" ? "package.json" : "requirements.txt",
           line_number: null,
           description: `${vuln.id ?? "CVE"}: ${vuln.summary ?? "Known vulnerability in this package version."}`,
-          fix_prompt: `Update ${pkg.name} from ${pkg.version} to latest version. Run: ${pkg.ecosystem === "npm" ? `npm install ${pkg.name}@latest` : `pip install --upgrade ${pkg.name}`}`,
-          fix_type: "terminal",
+          fix_prompt: buildDependencyVulnerabilityFixPrompt({
+            packageName: pkg.name,
+            version: pkg.version,
+            vulnId: vuln.id ?? "CVE",
+            description:
+              vuln.summary ?? "Known vulnerability in this package version.",
+          }),
+          fix_type: "cursor",
+          fix_confidence: "uncertain",
           confidence: "high",
           evidence: null,
         });

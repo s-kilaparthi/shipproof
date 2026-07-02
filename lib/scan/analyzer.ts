@@ -2,6 +2,9 @@ import * as Sentry from "@sentry/nextjs";
 import { anthropic } from "@/lib/claude";
 import type { AppStage, DevOpsTools, RepoScanMetadata, Tool } from "@/types";
 
+import {
+  normalizeDependencyVulnerabilityIssue,
+} from "./dependency-fix-utils";
 import { auditDependencies } from "./layers/dependencies";
 import { checkInfrastructure } from "./layers/infrastructure";
 import { scanSecrets } from "./layers/secrets";
@@ -222,7 +225,7 @@ For each issue add:
 Also add a fix_type field to each issue:
 - 'cursor' if the fix requires editing code files in Cursor/Lovable/Bolt/v0
 - 'sql' if the fix requires running SQL — use Supabase SQL Editor only if discovery mentions Supabase; otherwise use the correct tool for their database (MySQL, MongoDB, PostgreSQL, etc.)
-- 'terminal' if the fix requires running a command in terminal (npm install, etc)
+- 'terminal' if the fix requires running a command in terminal (never use for dependency vulnerabilities)
 - 'manual' if the fix requires manual action in a dashboard or settings page
 
 SQL fix_prompt requirements (fix_type = 'sql'):
@@ -238,7 +241,6 @@ For fix_type = 'sql' issues, also include:
 Examples:
 - Adding auth middleware → 'cursor'
 - Enabling RLS policies → 'sql'
-- Updating a package → 'terminal'
 - Enabling GitHub 2FA → 'manual'
 
 ## Fix Confidence Field
@@ -253,10 +255,29 @@ Use 'certain' when:
 - The fix adds rate limiting (universal pattern)
 
 Use 'uncertain' when:
-- The fix involves upgrading dependencies
+- The fix involves upgrading dependencies (always use fix_type 'cursor' for dependency vulnerabilities — see Dependency Vulnerability Rules)
 - The fix involves changing build configuration
 - The fix involves deprecated or browser-specific headers
 - The fix might conflict with the user's exact versions
+
+## Dependency Vulnerability Rules (mandatory)
+For ANY dependency or package vulnerability issue:
+- fix_type MUST be 'cursor' — never 'terminal'
+- fix_confidence MUST be 'uncertain'
+- fix_prompt MUST be an AI tool prompt for ${tool}, NOT a terminal command
+- NEVER include raw commands like "npm install X@latest", "pip install --upgrade X", or similar
+
+Use this fix_prompt format:
+"I have a security vulnerability in my app:
+[package name] version [version] has vulnerability [CVE ID]: [description].
+
+Please check if it's safe to update [package name] to a newer version given my current setup, and if so, update it carefully without breaking any existing functionality. If the update would break things, suggest the safest alternative."
+
+Examples:
+- Adding auth middleware → 'cursor'
+- Enabling RLS policies → 'sql'
+- Dependency vulnerability / package update → 'cursor' (never 'terminal')
+- Enabling GitHub 2FA → 'manual'
 
 ## Return Format
 [
@@ -453,14 +474,16 @@ export async function runCombinedAnalysis(
 }
 
 export function normalizeIssues(issues: ScanIssue[], tool: Tool): ScanIssue[] {
-  return issues.map((issue) => ({
-    ...issue,
-    severity: issue.severity.toLowerCase() as ScanIssue["severity"],
-    confidence: issue.confidence ?? "medium",
-    fix_prompt: issue.fix_prompt
-      .replace(/\[TOOL_NAME\]/g, tool)
-      .replace(/\[TOOL\]/g, tool),
-  }));
+  return issues.map((issue) =>
+    normalizeDependencyVulnerabilityIssue({
+      ...issue,
+      severity: issue.severity.toLowerCase() as ScanIssue["severity"],
+      confidence: issue.confidence ?? "medium",
+      fix_prompt: issue.fix_prompt
+        .replace(/\[TOOL_NAME\]/g, tool)
+        .replace(/\[TOOL\]/g, tool),
+    })
+  );
 }
 
 export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineResult> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { ChevronDown, Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -12,6 +12,10 @@ import {
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
 import { extractStackSummaryFromDiscovery } from "@/lib/scan/discovery-parser";
+import {
+  SKIP_REASON_LABELS,
+  type SkipReason,
+} from "@/lib/scan/skipped-issues";
 import { cn } from "@/lib/utils";
 import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 
@@ -21,6 +25,11 @@ interface IssueCardProps {
   discoveryResponse?: string | null;
   isFixed?: boolean;
   onToggleFixed?: () => void;
+  isSkipped?: boolean;
+  skipReason?: SkipReason | null;
+  onSkip?: (reason: SkipReason) => void;
+  onUnskip?: () => void;
+  collapsedByDefault?: boolean;
 }
 
 const CODE_BLOCK =
@@ -31,6 +40,8 @@ const COPY_BTN =
 
 const TOGGLE_BTN =
   "text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300";
+
+const SKIP_REASONS: SkipReason[] = ["break", "not_relevant", "later"];
 
 function buildAskToolPrompt(issue: ScanIssueRow, stackSummary: string): string {
   return `I have a security issue in my app:
@@ -74,6 +85,18 @@ function resolveFixType(issue: ScanIssueRow, step?: FixStep): FixType {
 async function copyText(text: string, successMessage: string) {
   await navigator.clipboard.writeText(text);
   toast.success(successMessage);
+}
+
+function UncertainFixNotice() {
+  return (
+    <div className="mb-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+      <p className="font-medium">⚠️ Verify before applying</p>
+      <p className="mt-0.5">
+        This fix may behave differently depending on your exact setup. We
+        recommend pasting this into your AI tool rather than applying manually.
+      </p>
+    </div>
+  );
 }
 
 function CopyButton({
@@ -138,10 +161,19 @@ export function IssueCard({
   discoveryResponse,
   isFixed = false,
   onToggleFixed,
+  isSkipped = false,
+  skipReason = null,
+  onSkip,
+  onUnskip,
+  collapsedByDefault = false,
 }: IssueCardProps) {
   const stackSummary = extractStackSummaryFromDiscovery(discoveryResponse, tool);
+  const [cardExpanded, setCardExpanded] = useState(!collapsedByDefault);
   const [fixExpanded, setFixExpanded] = useState(false);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
+  const [showSkipMenu, setShowSkipMenu] = useState(false);
+  const [selectedSkipReason, setSelectedSkipReason] =
+    useState<SkipReason>("break");
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState(false);
   const [copiedAskTool, setCopiedAskTool] = useState(false);
@@ -161,6 +193,13 @@ export function IssueCard({
     if (isFixed) setFixExpanded(false);
   }, [isFixed]);
 
+  useEffect(() => {
+    if (isSkipped) {
+      setShowSkipMenu(false);
+      setFixExpanded(false);
+    }
+  }, [isSkipped]);
+
   const handleCopy = async (
     text: string,
     message: string,
@@ -175,36 +214,90 @@ export function IssueCard({
     }
   };
 
+  const handleSkipConfirm = () => {
+    onSkip?.(selectedSkipReason);
+    setShowSkipMenu(false);
+  };
+
+  if (isSkipped && !cardExpanded) {
+    return (
+      <article className="border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-transparent">
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 text-left"
+          onClick={() => setCardExpanded(true)}
+        >
+          <div className="min-w-0">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+              Skipped
+            </span>
+            <p className="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
+              {issue.issue_name}
+            </p>
+            {skipReason ? (
+              <p className="mt-0.5 text-xs text-gray-400">
+                {SKIP_REASON_LABELS[skipReason]}
+              </p>
+            ) : null}
+          </div>
+          <ChevronDown className="size-4 shrink-0 text-gray-400" />
+        </button>
+      </article>
+    );
+  }
+
   return (
     <article
       className={cn(
         "border-b border-gray-100 bg-white px-4 py-4 dark:border-gray-800 dark:bg-transparent",
-        !isFixed && getSeverityBorder(issue.severity),
-        isFixed && "border-l-[3px] border-gray-300 opacity-60 dark:border-gray-600"
+        !isFixed && !isSkipped && getSeverityBorder(issue.severity),
+        isFixed && "border-l-[3px] border-gray-300 opacity-60 dark:border-gray-600",
+        isSkipped && "border-l-[3px] border-gray-300 opacity-70 dark:border-gray-600"
       )}
     >
-      {/* Header */}
+      {isSkipped ? (
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
+            Skipped
+          </span>
+          <button
+            type="button"
+            className={TOGGLE_BTN}
+            onClick={() => setCardExpanded(false)}
+          >
+            Collapse
+          </button>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-        <span className={cn("size-2 shrink-0 rounded-full", getSeverityDot(issue.severity))} />
+        {!isSkipped ? (
+          <span
+            className={cn("size-2 shrink-0 rounded-full", getSeverityDot(issue.severity))}
+          />
+        ) : null}
         <span
           className={cn(
             "text-xs font-medium uppercase tracking-wide",
-            getSeverityText(issue.severity)
+            isSkipped ? "text-gray-400" : getSeverityText(issue.severity)
           )}
         >
-          {severityKey}
+          {isSkipped ? "skipped" : severityKey}
         </span>
         <span
           className={cn(
             "text-sm font-semibold text-gray-900 dark:text-gray-100",
-            isFixed && "text-gray-400 line-through dark:text-gray-500"
+            isFixed && "text-gray-400 line-through dark:text-gray-500",
+            isSkipped && "text-gray-500 dark:text-gray-400"
           )}
         >
           {issue.issue_name}
         </span>
-        <span className="text-xs text-gray-400 dark:text-gray-500">
-          · {confidenceInline(issue.confidence)}
-        </span>
+        {!isSkipped ? (
+          <span className="text-xs text-gray-400 dark:text-gray-500">
+            · {confidenceInline(issue.confidence)}
+          </span>
+        ) : null}
       </div>
 
       {(issue.file_path || issue.line_number) && (
@@ -233,7 +326,7 @@ export function IssueCard({
         </div>
       ) : null}
 
-      {!isFixed ? (
+      {!isFixed && !isSkipped ? (
         <div className="mt-3">
           <button
             type="button"
@@ -245,6 +338,7 @@ export function IssueCard({
 
           {fixExpanded ? (
             <div className="mt-3 space-y-4">
+              {isUncertainFix ? <UncertainFixNotice /> : null}
               {isMultiStep ? (
                 <>
                   <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -319,10 +413,6 @@ export function IssueCard({
                   />
                   {isUncertainFix ? (
                     <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                      <p className="text-xs text-gray-500 dark:text-gray-400">
-                        We&apos;re not 100% certain about this fix for your exact
-                        setup. Ask {tool} directly.
-                      </p>
                       <CopyButton
                         onClick={() =>
                           handleCopy(
@@ -392,16 +482,72 @@ export function IssueCard({
         </div>
       ) : null}
 
-      {onToggleFixed ? (
-        <label className="mt-4 inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-          <input
-            type="checkbox"
-            checked={isFixed}
-            onChange={onToggleFixed}
-            className="size-3.5 rounded border-gray-300 dark:border-gray-600"
-          />
-          {isFixed ? "Fixed" : "Mark as fixed"}
-        </label>
+      {!isSkipped && onToggleFixed ? (
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+            <input
+              type="checkbox"
+              checked={isFixed}
+              onChange={onToggleFixed}
+              className="size-3.5 rounded border-gray-300 dark:border-gray-600"
+            />
+            {isFixed ? "Fixed" : "Mark as fixed"}
+          </label>
+
+          {onSkip && !isFixed ? (
+            <div className="relative">
+              <button
+                type="button"
+                className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300"
+                onClick={() => setShowSkipMenu((open) => !open)}
+              >
+                Can&apos;t fix right now →
+              </button>
+
+              {showSkipMenu ? (
+                <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                  <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                    Why are you skipping this?
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {SKIP_REASONS.map((reason) => (
+                      <label
+                        key={reason}
+                        className="flex cursor-pointer items-center gap-2 text-xs text-gray-600 dark:text-gray-400"
+                      >
+                        <input
+                          type="radio"
+                          name={`skip-reason-${issue.id}`}
+                          checked={selectedSkipReason === reason}
+                          onChange={() => setSelectedSkipReason(reason)}
+                          className="size-3.5"
+                        />
+                        {SKIP_REASON_LABELS[reason]}
+                      </label>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    className="mt-3 text-xs font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100"
+                    onClick={handleSkipConfirm}
+                  >
+                    Skip this issue
+                  </button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {isSkipped && onUnskip ? (
+        <button
+          type="button"
+          className="mt-4 text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          onClick={onUnskip}
+        >
+          Un-skip this issue
+        </button>
       ) : null}
     </article>
   );

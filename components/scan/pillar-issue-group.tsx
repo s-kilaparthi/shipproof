@@ -9,6 +9,7 @@ import {
   getPillarDisplayScore,
   getPillarScoreDetail,
 } from "@/lib/scan/health-score";
+import type { SkipReason } from "@/lib/scan/skipped-issues";
 import { cn } from "@/lib/utils";
 import type { Pillar, PillarScores, ScanIssueRow, Tool } from "@/types";
 
@@ -20,9 +21,11 @@ interface PillarIssueGroupProps {
   tool: Tool;
   discoveryResponse?: string | null;
   fixedIssueIds: string[];
+  skippedIssueIds: string[];
   isOpen: boolean;
   onToggle: () => void;
   onToggleFixed: (issueId: string) => void;
+  onSkipIssue: (issueId: string, reason: SkipReason) => void;
 }
 
 function SeverityCounts({
@@ -88,11 +91,14 @@ export function PillarIssueGroup({
   tool,
   discoveryResponse,
   fixedIssueIds,
+  skippedIssueIds,
   isOpen,
   onToggle,
   onToggleFixed,
+  onSkipIssue,
 }: PillarIssueGroupProps) {
-  const counts = countIssuesBySeverity(issues);
+  const activeIssues = issues.filter((issue) => !skippedIssueIds.includes(issue.id));
+  const counts = countIssuesBySeverity(activeIssues);
   const hasIssues = counts.total > 0;
 
   if (!hasIssues) {
@@ -142,7 +148,7 @@ export function PillarIssueGroup({
       >
         <div className="overflow-hidden">
           <div className="border-t border-gray-100 bg-white dark:border-gray-800 dark:bg-transparent">
-            {issues.map((issue) => (
+            {activeIssues.map((issue) => (
               <IssueCard
                 key={issue.id}
                 issue={issue}
@@ -150,6 +156,7 @@ export function PillarIssueGroup({
                 discoveryResponse={discoveryResponse}
                 isFixed={fixedIssueIds.includes(issue.id)}
                 onToggleFixed={() => onToggleFixed(issue.id)}
+                onSkip={(reason) => onSkipIssue(issue.id, reason)}
               />
             ))}
           </div>
