@@ -10,6 +10,10 @@ import {
   isQuickRescanScan,
   requiresFreshDiscovery,
 } from "@/lib/scan/discovery-cache";
+import {
+  formatStackSummary,
+  parseDiscoveryResponse,
+} from "@/lib/scan/discovery-parser";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
 import type { PillarScores, Tool } from "@/types";
@@ -52,6 +56,41 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     issues
   );
 
+  const { data: previousScan } = await supabase
+    .from("scans")
+    .select("id, overall_score")
+    .eq("user_id", user.id)
+    .eq("repo_name", scan.repo_name)
+    .eq("status", "completed")
+    .neq("id", scan.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let scoreImprovement: {
+    previousScore: number;
+    fixedCount: number;
+  } | null = null;
+
+  if (
+    previousScan?.overall_score != null &&
+    scan.overall_score != null &&
+    scan.overall_score > previousScan.overall_score
+  ) {
+    const { count: previousIssueCount } = await supabase
+      .from("scan_results")
+      .select("*", { count: "exact", head: true })
+      .eq("scan_id", previousScan.id);
+
+    scoreImprovement = {
+      previousScore: previousScan.overall_score,
+      fixedCount: Math.max(0, (previousIssueCount ?? 0) - issues.length),
+    };
+  }
+
+  const parsedDiscovery = parseDiscoveryResponse(scan.discovery_response ?? "");
+  const stackSummary = formatStackSummary(parsedDiscovery);
+
   if (scan.overall_score != null && scan.pillar_scores && !issues.length) {
     pillarScores.overall = scan.overall_score;
   }
@@ -93,6 +132,8 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         status={scan.status}
         pillarScores={pillarScores}
         issues={issues}
+        stackSummary={stackSummary}
+        scoreImprovement={scoreImprovement}
         isQuickRescan={quickRescan}
         discoveryAgeLabel={discoveryAgeLabel}
         canQuickRescan={canQuickRescan}

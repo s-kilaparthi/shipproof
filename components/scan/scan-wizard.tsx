@@ -5,6 +5,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import { Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
+import { AppStageSelector } from "@/components/scan/app-stage-selector";
 import { DiscoveryPrompt } from "@/components/scan/discovery-prompt";
 import { RepoSelector } from "@/components/scan/repo-selector";
 import { RescanModeSelector } from "@/components/scan/rescan-mode-selector";
@@ -16,6 +17,7 @@ import {
   FULL_SCAN_WIZARD_STEPS,
   QUICK_SCAN_WIZARD_STEPS,
   type AnalyzeScanResponse,
+  type AppStage,
   type CreateScanResponse,
   type DiscoveryStatusResponse,
   type GitHubRepo,
@@ -110,6 +112,7 @@ function ScanWizardContent() {
   const [formState, setFormState] = useState<ScanFormState>({
     selectedRepo: null,
     selectedTool: null,
+    appStage: null,
     discoveryResponse: "",
     domain: "",
     scanId: null,
@@ -185,6 +188,10 @@ function ScanWizardContent() {
             state.cachedDiscoveryAt ?? new Date().toISOString();
         }
 
+        if (state.appStage) {
+          analyzeBody.app_stage = state.appStage;
+        }
+
         const analyzeResponse = await fetch("/api/scan/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -217,7 +224,9 @@ function ScanWizardContent() {
             ? "rescan-mode"
             : state.discoveryResponse
               ? "discovery"
-              : "tool"
+              : state.appStage
+                ? "app-stage"
+                : "tool"
         );
       } finally {
         setIsSubmitting(false);
@@ -262,6 +271,7 @@ function ScanWizardContent() {
           const quickState: ScanFormState = {
             selectedRepo: match,
             selectedTool: status.tool as Tool,
+            appStage: null,
             discoveryResponse: status.lastDiscoveryResponse,
             domain: "",
             scanId: null,
@@ -306,6 +316,7 @@ function ScanWizardContent() {
     setFormState((prev) => ({
       ...prev,
       selectedRepo: repo,
+      appStage: null,
       rescanMode: null,
       useCachedDiscovery: false,
       cachedDiscoveryAt: null,
@@ -352,6 +363,7 @@ function ScanWizardContent() {
     setFormState((prev) => ({
       ...prev,
       rescanMode: "full",
+      appStage: null,
       useCachedDiscovery: false,
       cachedDiscoveryAt: null,
       discoveryResponse: "",
@@ -363,6 +375,10 @@ function ScanWizardContent() {
 
   const handleToolSelect = (tool: Tool) => {
     setFormState((prev) => ({ ...prev, selectedTool: tool }));
+  };
+
+  const handleAppStageSelect = (stage: AppStage) => {
+    setFormState((prev) => ({ ...prev, appStage: stage }));
   };
 
   const handleStartScan = async () => {
@@ -422,7 +438,7 @@ function ScanWizardContent() {
               <ToolSelector
                 selectedTool={formState.selectedTool}
                 onSelect={handleToolSelect}
-                onNext={() => setCurrentStepId("discovery")}
+                onNext={() => setCurrentStepId("app-stage")}
                 onBack={() => {
                   if (
                     flowType === "quick-choice" &&
@@ -436,6 +452,19 @@ function ScanWizardContent() {
               />
             )}
 
+            {currentStepId === "app-stage" && (
+              <AppStageSelector
+                selectedStage={formState.appStage}
+                onSelect={handleAppStageSelect}
+                onNext={() => setCurrentStepId("discovery")}
+                onSkip={() => {
+                  setFormState((prev) => ({ ...prev, appStage: null }));
+                  setCurrentStepId("discovery");
+                }}
+                onBack={() => setCurrentStepId("tool")}
+              />
+            )}
+
             {currentStepId === "discovery" && formState.selectedTool && (
               <DiscoveryPrompt
                 selectedTool={formState.selectedTool}
@@ -444,7 +473,7 @@ function ScanWizardContent() {
                   setFormState((prev) => ({ ...prev, discoveryResponse: value }))
                 }
                 onSubmit={handleStartScan}
-                onBack={() => setCurrentStepId("tool")}
+                onBack={() => setCurrentStepId("app-stage")}
                 isSubmitting={isSubmitting}
               />
             )}

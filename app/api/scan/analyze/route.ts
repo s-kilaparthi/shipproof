@@ -8,7 +8,7 @@ import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
 import { parseFixPrompt } from "@/lib/scan/fix-parser";
 import { generateFingerprint } from "@/lib/scan/fingerprint";
 import { fetchTargetedFiles } from "@/lib/scan/github-files";
-import type { Tool } from "@/types";
+import type { AppStage, Tool } from "@/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
@@ -40,6 +40,7 @@ export async function POST(request: Request) {
       use_cached_discovery?: boolean;
       cached_discovery_response?: string;
       cached_discovery_at?: string;
+      app_stage?: AppStage | null;
     };
     scanId = body.scan_id;
 
@@ -106,6 +107,8 @@ export async function POST(request: Request) {
         ? formatFilesAsMarkdown(fetchResult.files)
         : "No code files could be fetched from the repository.";
 
+    const appStage = body.app_stage ?? null;
+
     const { issues, pillarScores } = await runFullScan({
       discoveryResponse,
       codeMarkdown,
@@ -113,6 +116,7 @@ export async function POST(request: Request) {
       tool,
       domain: scan.domain,
       scanId: scan.id,
+      appStage,
       repoMetadata: fetchResult.metadata,
       devopsTools: fetchResult.devopsTools,
       fetchedPaths: fetchResult.fetchedPaths,
@@ -144,6 +148,7 @@ export async function POST(request: Request) {
           is_multi_step: isMultiStep,
           fix_steps: isMultiStep ? steps : null,
           confidence: issue.confidence ?? "medium",
+          fix_confidence: issue.fix_confidence ?? "certain",
           evidence: issue.evidence ?? null,
           fingerprint: generateFingerprint({
             pillar: issue.pillar,
@@ -179,6 +184,7 @@ export async function POST(request: Request) {
         pillar_scores: pillarScores,
         discovery_cached_at: discoveryCachedAt,
         used_cached_discovery: useCachedDiscovery,
+        app_stage: appStage,
       })
       .eq("id", scan.id);
 

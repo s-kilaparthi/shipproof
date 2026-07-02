@@ -101,6 +101,10 @@ export type Confidence = "high" | "medium" | "low";
 
 export type FixType = "cursor" | "sql" | "terminal" | "manual";
 
+export type FixConfidence = "certain" | "uncertain";
+
+export type AppStage = "building" | "deployed" | "live_small" | "live_growing";
+
 export interface Issue {
   id?: string;
   title: string;
@@ -137,6 +141,7 @@ export interface ScanIssueRow {
   fix_steps?: FixStep[] | null;
   fingerprint?: string | null;
   confidence?: Confidence;
+  fix_confidence?: FixConfidence;
   evidence?: string | null;
   created_at: string;
 }
@@ -163,6 +168,7 @@ export interface Scan {
   discovery_cached_at?: string | null;
   used_cached_discovery?: boolean | null;
   domain?: string | null;
+  app_stage?: AppStage | null;
   status: ScanStatus;
   overall_score?: number | null;
   pillar_scores?: PillarScores | null;
@@ -198,6 +204,7 @@ export interface AnalyzeScanRequest {
   use_cached_discovery?: boolean;
   cached_discovery_response?: string;
   cached_discovery_at?: string;
+  app_stage?: AppStage | null;
 }
 
 export interface AnalyzeScanResponse {
@@ -233,7 +240,7 @@ export interface DiscoveryStatusResponse {
 
 export type RescanMode = "quick" | "full";
 
-export type WizardStepId = "repo" | "rescan-mode" | "tool" | "discovery";
+export type WizardStepId = "repo" | "rescan-mode" | "tool" | "app-stage" | "discovery";
 
 export type WizardStepDisplayId = WizardStepId | "scanning" | "report";
 
@@ -245,6 +252,7 @@ export interface WizardStepConfig {
 export const FULL_SCAN_WIZARD_STEPS: WizardStepConfig[] = [
   { id: "repo", label: "Select Repo" },
   { id: "tool", label: "Select Tool" },
+  { id: "app-stage", label: "App Stage" },
   { id: "discovery", label: "Discovery" },
   { id: "scanning", label: "Scanning" },
   { id: "report", label: "Report" },
@@ -262,6 +270,7 @@ export type ScanStep = 1 | 2 | 3 | 4;
 export interface ScanFormState {
   selectedRepo: GitHubRepo | null;
   selectedTool: Tool | null;
+  appStage: AppStage | null;
   discoveryResponse: string;
   domain: string;
   scanId: string | null;

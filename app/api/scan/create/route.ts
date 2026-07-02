@@ -74,12 +74,11 @@ function validateCreateScanRequest(body: unknown): {
           ? validated.domain
           : "https://" + validated.domain
       );
-      if (
-        !["https:", "http:"].includes(d.protocol) ||
+      const isPrivateIP =
         /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/.test(
           d.hostname
-        )
-      ) {
+        );
+      if (!["https:", "http:"].includes(d.protocol) || isPrivateIP) {
         validated.domain = undefined;
       }
     } catch {

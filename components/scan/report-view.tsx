@@ -6,6 +6,7 @@ import { Info, RefreshCw, Share2, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { ScoreCelebrationBanner } from "@/components/scan/score-celebration-banner";
 import { FixProgressTracker } from "@/components/scan/fix-progress-tracker";
 import { IssueCard } from "@/components/scan/issue-card";
 import { PillarScoreCard } from "@/components/scan/pillar-score-card";
@@ -43,6 +44,11 @@ interface ReportViewProps {
   status: string;
   pillarScores: PillarScores;
   issues: ScanIssueRow[];
+  stackSummary?: string;
+  scoreImprovement?: {
+    previousScore: number;
+    fixedCount: number;
+  } | null;
   isQuickRescan?: boolean;
   discoveryAgeLabel?: string;
   canQuickRescan?: boolean;
@@ -56,6 +62,8 @@ export function ReportView({
   status,
   pillarScores,
   issues,
+  stackSummary = "Unknown stack",
+  scoreImprovement = null,
   isQuickRescan = false,
   discoveryAgeLabel,
   canQuickRescan = false,
@@ -107,6 +115,15 @@ export function ReportView({
 
   return (
     <div>
+      {scoreImprovement ? (
+        <ScoreCelebrationBanner
+          previousScore={scoreImprovement.previousScore}
+          currentScore={pillarScores.overall}
+          fixedCount={scoreImprovement.fixedCount}
+          remainingCount={issues.length}
+        />
+      ) : null}
+
       {/* Header */}
       <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -234,6 +251,7 @@ export function ReportView({
                         key={issue.id}
                         issue={issue}
                         tool={tool}
+                        stackSummary={stackSummary}
                         isFixed={fixedIssueIds.includes(issue.id)}
                         onToggleFixed={() => handleToggleFixed(issue.id)}
                       />

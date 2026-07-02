@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs";
 import { anthropic } from "@/lib/claude";
-import type { DevOpsTools, RepoScanMetadata, Tool } from "@/types";
+import type { AppStage, DevOpsTools, RepoScanMetadata, Tool } from "@/types";
 
 import { auditDependencies } from "./layers/dependencies";
 import { checkInfrastructure } from "./layers/infrastructure";
@@ -112,6 +112,23 @@ Example of a correct multi-step fix_prompt:
 
 STEP 2 — frontend/src/Students.jsx and frontend/src/Teachers.jsx: Update all API calls to these endpoints to include Authorization: Bearer \${session.access_token} header from the Supabase session object.'`;
 
+function getAppStageSystemContext(appStage?: AppStage | null): string {
+  if (!appStage) return "";
+
+  const messages: Record<AppStage, string> = {
+    building:
+      "Prioritize security fundamentals. Performance and scale issues are lower priority as the app has no users yet.",
+    deployed:
+      "All issues are equally important. App is live but low traffic.",
+    live_small:
+      "Security is critical. Performance issues should be flagged as they will affect real users soon.",
+    live_growing:
+      "Everything is urgent. Performance and scale issues are now critical as they affect real users daily.",
+  };
+
+  return `\n\n## App Stage Context\n${messages[appStage]}\n`;
+}
+
 function buildCombinedUserPrompt(
   discoveryResponse: string,
   codeMarkdown: string,
@@ -217,6 +234,23 @@ Examples:
 - Updating a package → 'terminal'
 - Enabling GitHub 2FA → 'manual'
 
+## Fix Confidence Field
+For each issue also add:
+'fix_confidence': 'certain' | 'uncertain'
+
+Use 'certain' when:
+- The fix is a SQL statement (always works)
+- The fix adds auth to an endpoint (universal)
+- The fix removes hardcoded secrets (universal)
+- The fix enables RLS (universal SQL)
+- The fix adds rate limiting (universal pattern)
+
+Use 'uncertain' when:
+- The fix involves upgrading dependencies
+- The fix involves changing build configuration
+- The fix involves deprecated or browser-specific headers
+- The fix might conflict with the user's exact versions
+
 ## Return Format
 [
   {
@@ -228,6 +262,7 @@ Examples:
     "description": "Max 2 sentences with specific code reference",
     "fix_prompt": "Paste into ${tool}: specific fix naming exact file and library",
     "fix_type": "cursor|sql|terminal|manual",
+    "fix_confidence": "certain|uncertain",
     "confidence": "high|medium|low",
     "evidence": "exact quote from code or null"
   }
@@ -280,6 +315,11 @@ function extractJsonArray(text: string): Record<string, unknown>[] {
   return results;
 }
 
+function normalizeFixConfidence(value: unknown): ScanIssue["fix_confidence"] {
+  if (value === "uncertain") return "uncertain";
+  return "certain";
+}
+
 function mapRawIssues(raw: Record<string, unknown>[]): ScanIssue[] {
   return raw.map((issue, index) => ({
     pillar: String(issue.pillar ?? "security").toLowerCase() as ScanIssue["pillar"],
@@ -290,6 +330,7 @@ function mapRawIssues(raw: Record<string, unknown>[]): ScanIssue[] {
     description: String(issue.description ?? ""),
     fix_prompt: String(issue.fix_prompt ?? ""),
     fix_type: normalizeFixType(issue.fix_type),
+    fix_confidence: normalizeFixConfidence(issue.fix_confidence),
     confidence: normalizeConfidence(issue.confidence),
     evidence: issue.evidence ? String(issue.evidence) : null,
   }));
@@ -325,7 +366,8 @@ export async function runCombinedAnalysis(
   tool: Tool,
   fileCount: number,
   repoMetadata?: RepoScanMetadata,
-  devopsTools?: DevOpsTools
+  devopsTools?: DevOpsTools,
+  appStage?: AppStage | null
 ): Promise<ScanIssue[]> {
   console.log(
     `[scan/analyzer] Layer 4: Sending ${fileCount} files, ${codeMarkdown.length} chars to Claude`
@@ -345,7 +387,7 @@ export async function runCombinedAnalysis(
         model: "claude-sonnet-4-6",
         max_tokens: 4000,
         temperature: 0,
-        system: COMBINED_SYSTEM_PROMPT,
+        system: COMBINED_SYSTEM_PROMPT + getAppStageSystemContext(appStage),
         messages: [{ role: "user", content: userPrompt }],
       })
     );
@@ -412,6 +454,7 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     fetchedPaths,
     allFilePaths,
     scanId,
+    appStage,
   } = input;
 
   try {
@@ -477,7 +520,8 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     tool,
     files.length,
     repoMetadata,
-    devopsTools
+    devopsTools,
+    appStage
   );
 
   const normalized = normalizeIssues(

@@ -1,4 +1,4 @@
-import type { Confidence, FixStep, FixType, Pillar, PillarScores, ScanIssueRow } from "@/types";
+import type { Confidence, FixConfidence, FixStep, FixType, Pillar, PillarScores, ScanIssueRow } from "@/types";
 import { calculateHealthScores, isLegacyPillarScores } from "./health-score";
 import { parseFixPrompt } from "./fix-parser";
 import { normalizeFixType } from "./fix-type-utils";
@@ -68,6 +68,7 @@ export function normalizeScanIssues(
         ...row,
         pillar: (row.pillar ?? "security") as Pillar,
         confidence: (row.confidence ?? "medium") as Confidence,
+        fix_confidence: (row.fix_confidence ?? "certain") as FixConfidence,
         evidence: row.evidence ?? null,
         fix_type: normalizeFixType(
           row.fix_type ??
@@ -100,6 +101,7 @@ export function normalizeScanIssues(
         is_multi_step: fixMeta.is_multi_step,
         fix_steps: fixMeta.fix_steps,
         confidence: issue.confidence ?? "medium",
+        fix_confidence: "certain",
         evidence: issue.evidence ?? null,
         created_at: new Date().toISOString(),
       };

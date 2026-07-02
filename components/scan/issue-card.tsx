@@ -32,8 +32,19 @@ import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 interface IssueCardProps {
   issue: ScanIssueRow;
   tool: Tool;
+  stackSummary?: string;
   isFixed?: boolean;
   onToggleFixed?: () => void;
+}
+
+function buildAskToolPrompt(
+  issue: ScanIssueRow,
+  stackSummary: string
+): string {
+  return `I have a security issue in my app:
+${issue.issue_name}: ${issue.description}
+My stack: ${stackSummary}
+Please fix this issue in my codebase without breaking my existing setup.`;
 }
 
 function confidenceLabel(confidence?: Confidence): string {
@@ -146,6 +157,7 @@ function TerminalFixDisplay({
 export function IssueCard({
   issue,
   tool,
+  stackSummary = "Unknown stack",
   isFixed = false,
   onToggleFixed,
 }: IssueCardProps) {
@@ -153,6 +165,7 @@ export function IssueCard({
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState(false);
+  const [copiedAskTool, setCopiedAskTool] = useState(false);
   const [copiedCommand, setCopiedCommand] = useState(false);
   const [copiedSteps, setCopiedSteps] = useState<Record<number, boolean>>({});
   const [copiedStepCommands, setCopiedStepCommands] = useState<
@@ -162,6 +175,7 @@ export function IssueCard({
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
+  const isUncertainFix = issue.fix_confidence === "uncertain";
 
   useEffect(() => {
     if (isFixed) {
@@ -217,6 +231,19 @@ export function IssueCard({
         () => setCopiedSteps((prev) => ({ ...prev, [step.stepNumber]: false })),
         2000
       );
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  const handleCopyAskTool = async () => {
+    try {
+      await copyText(
+        buildAskToolPrompt(issue, stackSummary),
+        `Ask ${tool} prompt copied to clipboard`
+      );
+      setCopiedAskTool(true);
+      setTimeout(() => setCopiedAskTool(false), 2000);
     } catch {
       toast.error("Failed to copy");
     }
@@ -410,6 +437,30 @@ export function IssueCard({
                       </>
                     )}
                   </Button>
+
+                  {isUncertainFix ? (
+                    <div className="space-y-3 border-t border-border pt-3">
+                      <p className="text-xs text-muted-foreground">
+                        We&apos;re not 100% certain about this fix for your exact
+                        setup. We recommend asking your AI tool directly.
+                      </p>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleCopyAskTool}
+                      >
+                        {copiedAskTool ? (
+                          <>
+                            <Check className="size-4" />
+                            Copied
+                          </>
+                        ) : (
+                          <>Ask {tool} to fix this</>
+                        )}
+                      </Button>
+                    </div>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -426,25 +477,70 @@ export function IssueCard({
                       <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
                         {issue.fix_prompt}
                       </pre>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="gap-2"
-                        onClick={handleCopySingle}
-                      >
-                        {copiedSingle ? (
-                          <>
-                            <Check className="size-4" />
-                            Copied
-                          </>
-                        ) : (
-                          <>
-                            <FixTypeIcon fixType={singleFixType} />
-                            {getCopyButtonLabel(singleFixType, tool)}
-                          </>
-                        )}
-                      </Button>
+                      {isUncertainFix ? (
+                        <div className="space-y-3">
+                          <p className="text-xs text-muted-foreground">
+                            We&apos;re not 100% certain about this fix for your
+                            exact setup. We recommend asking your AI tool directly.
+                          </p>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="gap-2"
+                              onClick={handleCopySingle}
+                            >
+                              {copiedSingle ? (
+                                <>
+                                  <Check className="size-4" />
+                                  Copied
+                                </>
+                              ) : (
+                                <>
+                                  <FixTypeIcon fixType={singleFixType} />
+                                  Copy Fix Prompt
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              className="gap-2"
+                              onClick={handleCopyAskTool}
+                            >
+                              {copiedAskTool ? (
+                                <>
+                                  <Check className="size-4" />
+                                  Copied
+                                </>
+                              ) : (
+                                <>Ask {tool} to fix this</>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={handleCopySingle}
+                        >
+                          {copiedSingle ? (
+                            <>
+                              <Check className="size-4" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <FixTypeIcon fixType={singleFixType} />
+                              {getCopyButtonLabel(singleFixType, tool)}
+                            </>
+                          )}
+                        </Button>
+                      )}
                     </>
                   )}
                 </>

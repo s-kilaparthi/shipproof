@@ -148,6 +148,20 @@ export function parseDiscoveryResponse(discoveryResponse: string): ParsedDiscove
   };
 }
 
+export function formatStackSummary(parsed: ParsedDiscovery): string {
+  const parts = [
+    parsed.techStack.frontend && `framework: ${parsed.techStack.frontend}`,
+    parsed.techStack.database && `database: ${parsed.techStack.database}`,
+    parsed.techStack.hosting && `hosting: ${parsed.techStack.hosting}`,
+    parsed.techStack.backend &&
+      !parsed.techStack.frontend &&
+      `backend: ${parsed.techStack.backend}`,
+  ].filter(Boolean);
+
+  if (parts.length > 0) return parts.join(", ");
+  return parsed.summary.slice(0, 200);
+}
+
 export function discoveryToMarkdown(parsed: ParsedDiscovery): string {
   return `### Tech Stack
 - Frontend: ${parsed.techStack.frontend ?? "Unknown"}

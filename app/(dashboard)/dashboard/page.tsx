@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ScanSearch } from "lucide-react";
 import { redirect } from "next/navigation";
 
+import { OnboardingWelcome } from "@/components/dashboard/onboarding-welcome";
 import { ScanHistory } from "@/components/dashboard/scan-history";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,6 +14,22 @@ import {
 } from "@/lib/scan/discovery-cache";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
+
+function getFirstName(user: {
+  email?: string | null;
+  user_metadata?: Record<string, unknown>;
+}): string {
+  const fullName =
+    (user.user_metadata?.full_name as string | undefined) ??
+    (user.user_metadata?.name as string | undefined);
+  if (fullName?.trim()) {
+    return fullName.trim().split(/\s+/)[0] ?? "there";
+  }
+  if (user.email) {
+    return user.email.split("@")[0] ?? "there";
+  }
+  return "there";
+}
 
 export default async function DashboardPage() {
   const supabase = createServerClient();
@@ -30,8 +47,20 @@ export default async function DashboardPage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  if (!scans || scans.length === 0) {
+    return (
+      <main className="min-h-screen bg-background">
+        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+          <ThemeToggle />
+          <SignOutButton />
+        </div>
+        <OnboardingWelcome firstName={getFirstName(user)} />
+      </main>
+    );
+  }
+
   const scansWithResults = await Promise.all(
-    (scans ?? []).map(async (scan) => {
+    scans.map(async (scan) => {
       const { data: resultRows } = await supabase
         .from("scan_results")
         .select("*")
@@ -123,18 +152,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      {repoGroups.length === 0 ? (
-        <div className="mt-12 flex flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-muted/30 px-6 py-16 text-center dark:border-gray-800">
-          <ScanSearch className="size-10 text-muted-foreground" />
-          <h2 className="mt-4 text-lg font-medium text-foreground">No scans yet</h2>
-          <p className="mt-2 max-w-sm text-sm text-muted-foreground">
-            Connect a GitHub repository and run your first security scan to see
-            results here.
-          </p>
-        </div>
-      ) : (
-        <ScanHistory repoGroups={scanHistoryGroups} />
-      )}
+      <ScanHistory repoGroups={scanHistoryGroups} />
     </main>
   );
 }
