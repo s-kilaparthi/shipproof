@@ -159,7 +159,69 @@ export function formatStackSummary(parsed: ParsedDiscovery): string {
   ].filter(Boolean);
 
   if (parts.length > 0) return parts.join(", ");
-  return parsed.summary.slice(0, 200);
+  if (parsed.summary && parsed.summary !== "No summary provided") {
+    return parsed.summary.slice(0, 400);
+  }
+  return "";
+}
+
+function cleanStackText(text: string): string {
+  return text
+    .replace(/^[\s\-*•]+/gm, "")
+    .replace(/\n+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Stack summary for "Ask your AI tool" prompts — PILLAR 1, first paragraph, or tool fallback. */
+export function extractStackSummaryFromDiscovery(
+  discoveryResponse: string | null | undefined,
+  tool: string
+): string {
+  const fallback = `Built with ${tool}`;
+  const raw = discoveryResponse?.trim();
+  if (!raw) return fallback;
+
+  const pillar1Match = raw.match(
+    /##\s*PILLAR\s*1\s*[—\-–]\s*IDENTITY\s*([\s\S]*?)(?=##\s*PILLAR|\Z)/i
+  );
+  if (pillar1Match?.[1]?.trim()) {
+    const section = cleanStackText(pillar1Match[1]);
+    if (section.length > 20) return section.slice(0, 400);
+  }
+
+  const structured = formatStackSummary(parseDiscoveryResponse(raw));
+  if (structured.length > 0) return structured;
+
+  const beforeNextPillar = raw.split(/\n##\s*PILLAR/i)[0]?.trim() ?? raw;
+  const firstParagraph = beforeNextPillar
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .find(
+      (paragraph) =>
+        paragraph.length > 30 &&
+        !paragraph.startsWith("You are a code") &&
+        !paragraph.startsWith("Just answer")
+    );
+  if (firstParagraph) {
+    return cleanStackText(firstParagraph).slice(0, 400);
+  }
+
+  const lines = raw
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(
+      (line) =>
+        line.length > 0 &&
+        !line.startsWith("#") &&
+        !line.startsWith("You are") &&
+        !line.startsWith("Just answer")
+    );
+  if (lines.length > 0) {
+    return cleanStackText(lines.slice(0, 8).join(" ")).slice(0, 400);
+  }
+
+  return fallback;
 }
 
 export function discoveryToMarkdown(parsed: ParsedDiscovery): string {

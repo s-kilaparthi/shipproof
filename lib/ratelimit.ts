@@ -12,3 +12,9 @@ export const scanCreateRatelimit = new Ratelimit({
   limiter: Ratelimit.slidingWindow(10, "60 s"),
   analytics: true,
 });
+
+export const scanIpRatelimit = new Ratelimit({
+  redis: Redis.fromEnv(),
+  limiter: Ratelimit.slidingWindow(10, "60 s"),
+  analytics: true,
+});

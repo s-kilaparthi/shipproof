@@ -139,6 +139,7 @@ export interface ScanIssueRow {
   fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
+  migration_filename?: string | null;
   fingerprint?: string | null;
   confidence?: Confidence;
   fix_confidence?: FixConfidence;
@@ -155,6 +156,7 @@ export interface ScanResult {
   fix_type?: FixType;
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;
+  migration_filename?: string | null;
   created_at: string;
 }
 

@@ -44,7 +44,7 @@ interface ReportViewProps {
   status: string;
   pillarScores: PillarScores;
   issues: ScanIssueRow[];
-  stackSummary?: string;
+  discoveryResponse?: string | null;
   scoreImprovement?: {
     previousScore: number;
     fixedCount: number;
@@ -62,7 +62,7 @@ export function ReportView({
   status,
   pillarScores,
   issues,
-  stackSummary = "Unknown stack",
+  discoveryResponse,
   scoreImprovement = null,
   isQuickRescan = false,
   discoveryAgeLabel,
@@ -251,7 +251,7 @@ export function ReportView({
                         key={issue.id}
                         issue={issue}
                         tool={tool}
-                        stackSummary={stackSummary}
+                        discoveryResponse={discoveryResponse}
                         isFixed={fixedIssueIds.includes(issue.id)}
                         onToggleFixed={() => handleToggleFixed(issue.id)}
                       />

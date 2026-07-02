@@ -10,10 +10,6 @@ import {
   isQuickRescanScan,
   requiresFreshDiscovery,
 } from "@/lib/scan/discovery-cache";
-import {
-  formatStackSummary,
-  parseDiscoveryResponse,
-} from "@/lib/scan/discovery-parser";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
 import type { PillarScores, Tool } from "@/types";
@@ -88,9 +84,6 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     };
   }
 
-  const parsedDiscovery = parseDiscoveryResponse(scan.discovery_response ?? "");
-  const stackSummary = formatStackSummary(parsedDiscovery);
-
   if (scan.overall_score != null && scan.pillar_scores && !issues.length) {
     pillarScores.overall = scan.overall_score;
   }
@@ -132,7 +125,7 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         status={scan.status}
         pillarScores={pillarScores}
         issues={issues}
-        stackSummary={stackSummary}
+        discoveryResponse={scan.discovery_response}
         scoreImprovement={scoreImprovement}
         isQuickRescan={quickRescan}
         discoveryAgeLabel={discoveryAgeLabel}

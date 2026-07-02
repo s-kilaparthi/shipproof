@@ -11,6 +11,7 @@ export interface ScanIssue {
   description: string;
   fix_prompt: string;
   fix_type?: FixType;
+  migration_filename?: string | null;
   fix_confidence?: "certain" | "uncertain";
   is_multi_step?: boolean;
   fix_steps?: FixStep[] | null;

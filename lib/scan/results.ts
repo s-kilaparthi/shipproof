@@ -2,6 +2,7 @@ import type { Confidence, FixConfidence, FixStep, FixType, Pillar, PillarScores,
 import { calculateHealthScores, isLegacyPillarScores } from "./health-score";
 import { parseFixPrompt } from "./fix-parser";
 import { normalizeFixType } from "./fix-type-utils";
+import { normalizeMigrationFilename } from "./sql-migration-utils";
 
 interface JsonbScanResult {
   issues?: Array<{
@@ -75,6 +76,13 @@ export function normalizeScanIssues(
             fixMeta.fix_steps?.[0]?.fixType ??
             (fixMeta.is_multi_step ? undefined : "cursor")
         ),
+        migration_filename:
+          row.fix_type === "sql" || normalizeFixType(row.fix_type) === "sql"
+            ? normalizeMigrationFilename(
+                row.migration_filename,
+                String(row.issue_name ?? "migration")
+              )
+            : null,
         is_multi_step: fixMeta.is_multi_step,
         fix_steps: fixMeta.fix_steps,
       };

@@ -17,6 +17,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SqlFixDisplay } from "@/components/scan/sql-fix-display";
 import { formatAllSteps, formatStepText } from "@/lib/scan/fix-parser";
 import {
   extractTerminalCommand,
@@ -25,6 +26,7 @@ import {
   getFixTypeBadgeLabel,
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
+import { extractStackSummaryFromDiscovery } from "@/lib/scan/discovery-parser";
 import { getSeverityColor } from "@/lib/scan/health-score";
 import { cn } from "@/lib/utils";
 import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
@@ -32,7 +34,7 @@ import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 interface IssueCardProps {
   issue: ScanIssueRow;
   tool: Tool;
-  stackSummary?: string;
+  discoveryResponse?: string | null;
   isFixed?: boolean;
   onToggleFixed?: () => void;
 }
@@ -157,10 +159,11 @@ function TerminalFixDisplay({
 export function IssueCard({
   issue,
   tool,
-  stackSummary = "Unknown stack",
+  discoveryResponse,
   isFixed = false,
   onToggleFixed,
 }: IssueCardProps) {
+  const stackSummary = extractStackSummaryFromDiscovery(discoveryResponse, tool);
   const [fixExpanded, setFixExpanded] = useState(false);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
@@ -465,7 +468,9 @@ export function IssueCard({
               ) : (
                 <>
                   <FixTypeBadge fixType={singleFixType} />
-                  {singleFixType === "terminal" &&
+                  {singleFixType === "sql" ? (
+                    <SqlFixDisplay issue={issue} tool={tool} />
+                  ) : singleFixType === "terminal" &&
                   extractTerminalCommand(issue.fix_prompt).command ? (
                     <TerminalFixDisplay
                       fixPrompt={issue.fix_prompt}

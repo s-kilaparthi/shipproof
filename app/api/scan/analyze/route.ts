@@ -1,6 +1,6 @@
 import { createOctokit } from "@/lib/github";
 import { getGitHubToken, requireUser } from "@/lib/auth";
-import { scanRatelimit } from "@/lib/ratelimit";
+import { scanIpRatelimit, scanRatelimit } from "@/lib/ratelimit";
 import { createServerClient } from "@/lib/supabase/server";
 import { runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
@@ -24,6 +24,16 @@ export async function POST(request: Request) {
 
     if ("error" in auth) {
       return auth.error;
+    }
+
+    const ip =
+      request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+    const { success: ipAllowed } = await scanIpRatelimit.limit(ip);
+    if (!ipAllowed) {
+      return Response.json(
+        { error: "Too many requests. Please wait before scanning again." },
+        { status: 429 }
+      );
     }
 
     const identifier = `scan_analyze_${auth.user.id}`;
@@ -145,6 +155,8 @@ export async function POST(request: Request) {
           description: issue.description,
           fix_prompt: issue.fix_prompt,
           fix_type: fixType,
+          migration_filename:
+            fixType === "sql" ? (issue.migration_filename ?? null) : null,
           is_multi_step: isMultiStep,
           fix_steps: isMultiStep ? steps : null,
           confidence: issue.confidence ?? "medium",
