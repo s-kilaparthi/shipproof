@@ -34,9 +34,13 @@ export async function getGitHubToken(
   supabase: SupabaseClient
 ): Promise<string | null> {
   const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+  if (error || !user) return null;
+  const {
     data: { session },
   } = await supabase.auth.getSession();
-
   return session?.provider_token ?? null;
 }
 

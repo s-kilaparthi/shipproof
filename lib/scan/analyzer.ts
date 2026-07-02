@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { anthropic } from "@/lib/claude";
 import type { DevOpsTools, RepoScanMetadata, Tool } from "@/types";
 
@@ -410,8 +411,10 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
     devopsTools,
     fetchedPaths,
     allFilePaths,
+    scanId,
   } = input;
 
+  try {
   const { issues: secretIssues, scannedFileCount } = scanSecrets(files, tool);
   console.log(
     `[scan/analyzer] Layer 1: Scanning ${scannedFileCount} files for secrets`
@@ -542,4 +545,13 @@ export async function runFullScan(input: ScanEngineInput): Promise<ScanEngineRes
   console.log(`[scan/analyzer] Overall score: ${pillarScores.overall}`);
 
   return { issues: filtered, pillarScores };
+  } catch (error) {
+    Sentry.captureException(error, {
+      tags: {
+        scan_id: scanId,
+        layer: "scan_engine",
+      },
+    });
+    throw error;
+  }
 }

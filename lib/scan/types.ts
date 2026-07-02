@@ -23,6 +23,7 @@ export interface ScanEngineInput {
   files: { path: string; content: string }[];
   tool: import("@/types").Tool;
   domain?: string | null;
+  scanId?: string;
   repoMetadata?: import("@/types").RepoScanMetadata;
   devopsTools?: import("@/types").DevOpsTools;
   fetchedPaths?: string[];

@@ -28,6 +28,13 @@ function validateCreateScanRequest(body: unknown): {
 
   if (typeof data.repo_url !== "string" || data.repo_url.trim().length === 0) {
     missingFields.push("repo_url");
+  } else {
+    try {
+      const u = new URL((data.repo_url as string).trim());
+      if (!["https:"].includes(u.protocol)) missingFields.push("repo_url");
+    } catch {
+      missingFields.push("repo_url");
+    }
   }
 
   if (
@@ -59,6 +66,26 @@ function validateCreateScanRequest(body: unknown): {
         ? data.domain.trim()
         : undefined,
   };
+
+  if (validated.domain) {
+    try {
+      const d = new URL(
+        validated.domain.startsWith("http")
+          ? validated.domain
+          : "https://" + validated.domain
+      );
+      if (
+        !["https:", "http:"].includes(d.protocol) ||
+        /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|169\.254\.)/.test(
+          d.hostname
+        )
+      ) {
+        validated.domain = undefined;
+      }
+    } catch {
+      validated.domain = undefined;
+    }
+  }
 
   console.log("[scan/create] Validation passed:", {
     repo_name: validated.repo_name,

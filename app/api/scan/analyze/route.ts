@@ -112,6 +112,7 @@ export async function POST(request: Request) {
       files: fetchResult.files,
       tool,
       domain: scan.domain,
+      scanId: scan.id,
       repoMetadata: fetchResult.metadata,
       devopsTools: fetchResult.devopsTools,
       fetchedPaths: fetchResult.fetchedPaths,
