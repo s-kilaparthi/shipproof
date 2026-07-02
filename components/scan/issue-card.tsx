@@ -27,7 +27,7 @@ import {
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
 import { extractStackSummaryFromDiscovery } from "@/lib/scan/discovery-parser";
-import { getSeverityColor } from "@/lib/scan/health-score";
+import { getSeverityCardBorder, getSeverityColor } from "@/lib/scan/health-score";
 import { cn } from "@/lib/utils";
 import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 
@@ -266,7 +266,9 @@ export function IssueCard({
   return (
     <Card
       className={cn(
-        isFixed && "border-l-4 border-green-500 opacity-75"
+        isFixed
+          ? "border-l-4 border-green-500 opacity-75"
+          : getSeverityCardBorder(issue.severity)
       )}
     >
       <CardHeader className="pb-3">

@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   buildMigrationCreateFilePrompt,
-  buildMigrationFileContent,
   buildMigrationFilePath,
   extractSqlContent,
   formatMigrationDate,
@@ -28,26 +27,22 @@ async function copyText(text: string, successMessage: string) {
 
 export function SqlFixDisplay({ issue, tool }: SqlFixDisplayProps) {
   const [copiedSql, setCopiedSql] = useState(false);
-  const [copiedMigration, setCopiedMigration] = useState(false);
-  const [copiedCreatePrompt, setCopiedCreatePrompt] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const migrationSlug = normalizeMigrationFilename(
     issue.migration_filename,
     issue.issue_name
   );
-  const timestamp = getMigrationTimestamp();
+  const filePath = buildMigrationFilePath(
+    migrationSlug,
+    getMigrationTimestamp()
+  );
   const displayDate = formatMigrationDate();
-  const filePath = buildMigrationFilePath(migrationSlug, timestamp);
 
-  const { sqlContent, migrationFileContent, createFilePrompt } = useMemo(() => {
+  const { sqlContent, createFilePrompt } = useMemo(() => {
     const sql = extractSqlContent(issue.fix_prompt);
     return {
       sqlContent: sql,
-      migrationFileContent: buildMigrationFileContent(
-        issue.issue_name,
-        sql,
-        displayDate
-      ),
       createFilePrompt: buildMigrationCreateFilePrompt(
         tool,
         filePath,
@@ -74,7 +69,6 @@ export function SqlFixDisplay({ issue, tool }: SqlFixDisplayProps) {
 
   return (
     <div className="space-y-6">
-      {/* Section 1 — Run in Supabase SQL Editor */}
       <section className="space-y-3">
         <h4 className="text-sm font-semibold text-foreground">
           Run in Supabase SQL Editor
@@ -87,7 +81,9 @@ export function SqlFixDisplay({ issue, tool }: SqlFixDisplayProps) {
           variant="outline"
           size="sm"
           className="gap-2"
-          onClick={() => handleCopy(sqlContent, "SQL copied to clipboard", setCopiedSql)}
+          onClick={() =>
+            handleCopy(sqlContent, "SQL copied to clipboard", setCopiedSql)
+          }
         >
           {copiedSql ? (
             <>
@@ -103,53 +99,13 @@ export function SqlFixDisplay({ issue, tool }: SqlFixDisplayProps) {
         </Button>
       </section>
 
-      {/* Section 2 — Save to your repo */}
       <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
         <h4 className="text-sm font-semibold text-foreground">
-          Save to your repo (recommended)
+          Save this fix to your repo
         </h4>
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Add this as a migration file so ShipProof won&apos;t flag this issue on
-          future scans.
+          Paste this into {tool} so it creates the migration file automatically:
         </p>
-        <p className="font-mono text-xs text-muted-foreground break-all">
-          {filePath}
-        </p>
-        <pre className="max-h-64 overflow-x-auto overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 font-mono text-xs leading-relaxed whitespace-pre-wrap">
-          {migrationFileContent}
-        </pre>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() =>
-            handleCopy(
-              migrationFileContent,
-              "Migration file copied to clipboard",
-              setCopiedMigration
-            )
-          }
-        >
-          {copiedMigration ? (
-            <>
-              <Check className="size-4" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" />
-              Copy Migration File
-            </>
-          )}
-        </Button>
-      </section>
-
-      {/* Section 3 — Paste into AI tool */}
-      <section className="space-y-3 rounded-lg border border-border bg-muted/20 p-4">
-        <h4 className="text-sm font-semibold text-foreground">
-          Paste into {tool} to create the file
-        </h4>
         <pre className="max-h-64 overflow-x-auto overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
           {createFilePrompt}
         </pre>
@@ -161,12 +117,12 @@ export function SqlFixDisplay({ issue, tool }: SqlFixDisplayProps) {
           onClick={() =>
             handleCopy(
               createFilePrompt,
-              `Create-file prompt copied for ${tool}`,
-              setCopiedCreatePrompt
+              `Prompt copied — paste into ${tool}`,
+              setCopiedPrompt
             )
           }
         >
-          {copiedCreatePrompt ? (
+          {copiedPrompt ? (
             <>
               <Check className="size-4" />
               Copied

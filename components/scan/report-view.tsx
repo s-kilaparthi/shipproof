@@ -3,12 +3,15 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Info, RefreshCw, Share2, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ScoreCelebrationBanner } from "@/components/scan/score-celebration-banner";
 import { FixProgressTracker } from "@/components/scan/fix-progress-tracker";
-import { IssueCard } from "@/components/scan/issue-card";
+import {
+  computeInitialExpandedPillars,
+  PillarIssueGroup,
+} from "@/components/scan/pillar-issue-group";
 import { PillarScoreCard } from "@/components/scan/pillar-score-card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +20,6 @@ import {
   countIssuesBySeverity,
   getHealthScoreBg,
   getHealthScoreColor,
-  getPillarDisplayScore,
   getScoreLabel,
 } from "@/lib/scan/health-score";
 import { groupIssuesByPillar } from "@/lib/scan/results";
@@ -31,6 +33,7 @@ import {
   ALL_PILLARS,
   DISPLAY_PILLARS,
   type DisplayPillar,
+  type Pillar,
   type PillarScores,
   type ScanIssueRow,
   type Tool,
@@ -54,6 +57,28 @@ interface ReportViewProps {
   canQuickRescan?: boolean;
 }
 
+function SummaryBadges({ counts }: { counts: ReturnType<typeof countIssuesBySeverity> }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {counts.critical > 0 && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800">
+          🔴 {counts.critical} Critical
+        </span>
+      )}
+      {counts.warning > 0 && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800">
+          🟡 {counts.warning} Warning
+        </span>
+      )}
+      {counts.info > 0 && (
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
+          ⚫ {counts.info} Info
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function ReportView({
   scanId,
   repoName,
@@ -75,6 +100,15 @@ export function ReportView({
   const scoreLabel = getScoreLabel(pillarScores.overall);
   const rescanHref = `/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`;
 
+  const initialExpanded = useMemo(
+    () => computeInitialExpandedPillars(grouped, ALL_PILLARS),
+    [grouped]
+  );
+
+  const [expandedPillars, setExpandedPillars] = useState<Set<Pillar>>(
+    () => initialExpanded
+  );
+
   useEffect(() => {
     setFixedIssueIds(readFixedIssueIds(scanId));
   }, [scanId]);
@@ -83,10 +117,9 @@ export function ReportView({
     (issueId: string) => {
       setFixedIssueIds((current) => {
         const isCurrentlyFixed = current.includes(issueId);
-        const next = isCurrentlyFixed
+        return isCurrentlyFixed
           ? unmarkIssueFixed(scanId, issueId)
           : markIssueFixed(scanId, issueId);
-        return next;
       });
     },
     [scanId]
@@ -96,10 +129,22 @@ export function ReportView({
     clearFixedIssues(scanId);
   }, [scanId]);
 
+  const togglePillar = (pillarId: Pillar) => {
+    setExpandedPillars((prev) => {
+      const next = new Set(prev);
+      if (next.has(pillarId)) next.delete(pillarId);
+      else next.add(pillarId);
+      return next;
+    });
+  };
+
   const scrollToPillar = (pillar: DisplayPillar) => {
-    document.getElementById(`pillar-${pillar}`)?.scrollIntoView({
-      behavior: "smooth",
-      block: "start",
+    setExpandedPillars((prev) => new Set(prev).add(pillar));
+    requestAnimationFrame(() => {
+      document.getElementById(`pillar-${pillar}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     });
   };
 
@@ -124,7 +169,7 @@ export function ReportView({
         />
       ) : null}
 
-      {/* Header */}
+      {/* 1. Header */}
       <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-2">
@@ -175,8 +220,8 @@ export function ReportView({
         </div>
       </div>
 
-      {/* Pillar score cards */}
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      {/* 2. Pillar score cards */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {DISPLAY_PILLARS.map(({ id, label }) => (
           <PillarScoreCard
             key={id}
@@ -188,21 +233,17 @@ export function ReportView({
         ))}
       </div>
 
-      <div className="mb-8 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
-        <p className="font-medium text-foreground">About this report</p>
-        <p className="mt-2 leading-relaxed">
-          ShipProof analyzes up to 15 files from your repository. Pillars marked
-          ⚠️ or — had limited data available. Add more configuration files to
-          your repo or provide your domain for a more complete assessment.
-        </p>
-        <p className="mt-2">
-          <a href="/#faq" className="underline underline-offset-2 hover:text-foreground">
-            Learn what we check →
-          </a>
-        </p>
-      </div>
+      {/* 3. Summary counts */}
+      {issues.length > 0 ? (
+        <div className="mb-6 space-y-3">
+          <p className="text-base font-semibold text-foreground">
+            {counts.total} total issue{counts.total === 1 ? "" : "s"} found
+          </p>
+          <SummaryBadges counts={counts} />
+        </div>
+      ) : null}
 
-      {/* Issues by pillar */}
+      {/* 4. Issues grouped by pillar */}
       {issues.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center py-16 text-center">
@@ -217,7 +258,7 @@ export function ReportView({
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-10">
+        <div className="space-y-3">
           <FixProgressTracker
             fixedCount={fixedIssueIds.length}
             totalCount={issues.length}
@@ -225,60 +266,28 @@ export function ReportView({
             onRescanClick={handleRescanClick}
           />
 
-          {ALL_PILLARS.filter(({ id }) => grouped[id].length > 0).map(
-            ({ id, label }) => {
-              const displayId = DISPLAY_PILLARS.some((p) => p.id === id)
-                ? id
-                : id;
-              return (
-                <section
-                  key={id}
-                  id={`pillar-${displayId}`}
-                  className="scroll-mt-24"
-                >
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-muted-foreground">{label}</h2>
-                    <Badge
-                      variant="outline"
-                      className={getHealthScoreBg(pillarScores[id])}
-                    >
-                      Score: {getPillarDisplayScore(pillarScores[id])}
-                    </Badge>
-                  </div>
-                  <div className="space-y-4">
-                    {grouped[id].map((issue) => (
-                      <IssueCard
-                        key={issue.id}
-                        issue={issue}
-                        tool={tool}
-                        discoveryResponse={discoveryResponse}
-                        isFixed={fixedIssueIds.includes(issue.id)}
-                        onToggleFixed={() => handleToggleFixed(issue.id)}
-                      />
-                    ))}
-                  </div>
-                </section>
-              );
-            }
-          )}
+          {ALL_PILLARS.map(({ id, label }) => (
+            <PillarIssueGroup
+              key={id}
+              pillarId={id}
+              label={label}
+              issues={grouped[id]}
+              pillarScores={pillarScores}
+              tool={tool}
+              discoveryResponse={discoveryResponse}
+              fixedIssueIds={fixedIssueIds}
+              isOpen={expandedPillars.has(id)}
+              onToggle={() => togglePillar(id)}
+              onToggleFixed={handleToggleFixed}
+            />
+          ))}
         </div>
       )}
 
-      {/* Summary footer */}
+      {/* Footer actions */}
       <div className="mt-12 rounded-xl border border-border bg-muted/30 p-6">
-        <h3 className="font-semibold text-foreground">Summary</h3>
-        <div className="mt-3 flex flex-wrap gap-4 text-sm text-muted-foreground">
-          <span>{counts.total} total issues</span>
-          <span className="text-red-600">{counts.critical} critical</span>
-          <span className="text-amber-600">{counts.warning} warning</span>
-          <span className="text-gray-500">{counts.info} info</span>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-          <Link
-            href={rescanHref}
-            onClick={handleRescanClick}
-          >
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Link href={rescanHref} onClick={handleRescanClick}>
             <Button variant="outline" className="w-full gap-2 sm:w-auto">
               <RefreshCw className="size-4" />
               Rescan
@@ -303,11 +312,12 @@ export function ReportView({
         </div>
       </div>
 
-      <div className="mt-8 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+      <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
         <Info className="mt-0.5 size-4 shrink-0" />
         <p>
-          ShipProof uses AI-powered analysis. Results may vary slightly between
-          scans. For best results, apply fix prompts before rescanning.
+          ShipProof analyzes up to 15 files from your repository. Pillars marked
+          ⚠️ had limited data. Results may vary slightly between scans — apply fix
+          prompts before rescanning for best results.
         </p>
       </div>
     </div>

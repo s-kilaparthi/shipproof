@@ -499,9 +499,27 @@ export function getSeverityBadgeVariant(
 
 export function getSeverityColor(severity: string): string {
   const s = severity.toLowerCase();
-  if (s === "critical") return "bg-red-100 text-red-700 border-red-200";
-  if (s === "warning") return "bg-amber-100 text-amber-700 border-amber-200";
-  return "bg-gray-100 text-gray-600 border-gray-200";
+  if (s === "critical") {
+    return "bg-red-50 text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800";
+  }
+  if (s === "warning") {
+    return "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800";
+  }
+  return "bg-gray-50 text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700";
+}
+
+export function getSeverityCardBorder(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical") return "border-l-4 border-red-300 dark:border-red-700";
+  if (s === "warning") return "border-l-4 border-amber-300 dark:border-amber-700";
+  return "border-l-4 border-gray-300 dark:border-gray-600";
+}
+
+export function getSeverityDotClass(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical") return "bg-red-400";
+  if (s === "warning") return "bg-amber-400";
+  return "bg-gray-400";
 }
 
 export function getPillarDotColor(score: number | PillarScoreDetail): string {
