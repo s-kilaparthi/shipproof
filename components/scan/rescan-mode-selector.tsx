@@ -29,84 +29,63 @@ export function RescanModeSelector({
   const discoveryAgeRounded = Math.floor(discoveryAgeDays);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Choose scan mode</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col shadow-none">
+      <CardHeader className="shrink-0 space-y-1 pb-3">
+        <CardTitle className="text-lg">Choose scan mode</CardTitle>
         <p className="text-sm text-muted-foreground">
-          You have a saved discovery from this repo. Pick how you want to rescan.
+          You have a saved discovery from this repo.
         </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {discoveryAgeDays > 7 && (
-          <div className="rounded-lg border border-card-border bg-muted-background px-4 py-3 text-sm text-muted-foreground">
-            💡 Your discovery is {discoveryAgeRounded} day
-            {discoveryAgeRounded === 1 ? "" : "s"} old. We recommend a Full
-            Rescan if you&apos;ve added new features or changed your tech stack
-            — but Quick Rescan still works.
-          </div>
-        )}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onQuickRescan}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") onQuickRescan();
-            }}
-            className={cn(
-              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-foreground hover:shadow-sm",
-              isSubmitting && "pointer-events-none opacity-50"
-            )}
-          >
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <Zap className="size-5 text-foreground" />
-              Quick Rescan
+      <CardContent className="flex min-h-0 flex-1 flex-col p-4 pt-0">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+          {discoveryAgeDays > 7 && (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-muted-foreground dark:border-gray-800 dark:bg-gray-900/50">
+              Discovery is {discoveryAgeRounded} day
+              {discoveryAgeRounded === 1 ? "" : "s"} old — consider a full rescan
+              if your stack changed.
             </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Use your saved discovery from {discoveryAgeLabel}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Faster — no need to run the discovery prompt again
-            </p>
-            <Button type="button" className="mt-4 w-full pointer-events-none">
-              Select Quick Rescan
-            </Button>
-          </div>
-
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={onFullRescan}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") onFullRescan();
-            }}
-            className={cn(
-              "cursor-pointer rounded-xl border border-border bg-muted/20 p-5 text-left transition-all hover:border-foreground hover:shadow-sm",
-              isSubmitting && "pointer-events-none opacity-50"
-            )}
-          >
-            <div className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <RefreshCw className="size-5 text-foreground" />
-              Full Rescan
-            </div>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Run the discovery prompt again in {tool}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              More accurate if you&apos;ve changed your tech stack
-            </p>
-            <Button
+          )}
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
               type="button"
-              variant="outline"
-              className="mt-4 w-full pointer-events-none"
+              onClick={onQuickRescan}
+              disabled={isSubmitting}
+              className={cn(
+                "rounded-lg border border-gray-200 p-3 text-left transition-colors hover:bg-muted/50 dark:border-gray-800",
+                isSubmitting && "pointer-events-none opacity-50"
+              )}
             >
-              Select Full Rescan
-            </Button>
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Zap className="size-4" />
+                Quick rescan
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Use saved discovery from {discoveryAgeLabel}
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={onFullRescan}
+              disabled={isSubmitting}
+              className={cn(
+                "rounded-lg border border-gray-200 p-3 text-left transition-colors hover:bg-muted/50 dark:border-gray-800",
+                isSubmitting && "pointer-events-none opacity-50"
+              )}
+            >
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <RefreshCw className="size-4" />
+                Full rescan
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Run discovery again in {tool}
+              </p>
+            </button>
           </div>
         </div>
 
-        <div className="flex justify-start pt-2">
-          <Button type="button" variant="ghost" onClick={onBack} disabled={isSubmitting}>
+        <div className="mt-3 shrink-0 border-t border-gray-100 pt-3 dark:border-gray-800">
+          <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>
             Back
           </Button>
         </div>

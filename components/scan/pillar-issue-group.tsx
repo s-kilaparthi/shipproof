@@ -1,10 +1,11 @@
 "use client";
 
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, Info } from "lucide-react";
 
 import { IssueCard } from "@/components/scan/issue-card";
 import {
   countIssuesBySeverity,
+  getPillarConfidenceLabel,
   getPillarDisplayScore,
   getPillarScoreDetail,
 } from "@/lib/scan/health-score";
@@ -24,31 +25,28 @@ interface PillarIssueGroupProps {
   onToggleFixed: (issueId: string) => void;
 }
 
-function SeverityCountBadges({
+function SeverityCounts({
   counts,
-  compact = false,
 }: {
   counts: ReturnType<typeof countIssuesBySeverity>;
-  compact?: boolean;
 }) {
   if (counts.total === 0) return null;
 
   const items = [
-    counts.critical > 0 && { emoji: "🔴", count: counts.critical, label: "critical" },
-    counts.warning > 0 && { emoji: "🟡", count: counts.warning, label: "warning" },
-    counts.info > 0 && { emoji: "⚫", count: counts.info, label: "info" },
-  ].filter(Boolean) as { emoji: string; count: number; label: string }[];
+    counts.critical > 0 && { dot: "bg-red-400", count: counts.critical },
+    counts.warning > 0 && { dot: "bg-amber-400", count: counts.warning },
+    counts.info > 0 && { dot: "bg-gray-400", count: counts.info },
+  ].filter(Boolean) as { dot: string; count: number }[];
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      {items.map(({ emoji, count, label }) => (
+    <div className="flex flex-wrap items-center gap-3">
+      {items.map(({ dot, count }, index) => (
         <span
-          key={label}
-          className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+          key={index}
+          className="inline-flex items-center gap-1 text-xs text-gray-500"
         >
-          {emoji}
+          <span className={cn("size-1.5 rounded-full", dot)} />
           {count}
-          {!compact && <span className="hidden sm:inline">{label}</span>}
         </span>
       ))}
     </div>
@@ -58,28 +56,26 @@ function SeverityCountBadges({
 function PillarScoreLabel({
   pillarScores,
   pillarId,
-  noIssues = false,
 }: {
   pillarScores: PillarScores;
   pillarId: Pillar;
-  noIssues?: boolean;
 }) {
   const detail = getPillarScoreDetail(pillarScores, pillarId);
   const displayScore = getPillarDisplayScore(detail);
-
-  let suffix = "";
-  if (noIssues && displayScore === "100") {
-    suffix = " ✓";
-  } else if (detail.confidence === "insufficient" || detail.confidence === "low") {
-    suffix = " ⚠️";
-  } else if (detail.confidence === "medium") {
-    suffix = " ℹ️";
-  }
+  const tooltip = getPillarConfidenceLabel(detail.confidence);
+  const showInfo =
+    detail.confidence === "insufficient" ||
+    detail.confidence === "low" ||
+    detail.confidence === "medium";
 
   return (
-    <span className="shrink-0 text-xs text-muted-foreground sm:text-sm">
+    <span className="flex shrink-0 items-center gap-1.5 text-sm text-gray-500">
       Score: {displayScore}
-      {suffix}
+      {showInfo ? (
+        <span title={tooltip} className="inline-flex">
+          <Info className="size-3.5 text-gray-400" />
+        </span>
+      ) : null}
     </span>
   );
 }
@@ -103,39 +99,37 @@ export function PillarIssueGroup({
     return (
       <div
         id={`pillar-${pillarId}`}
-        className="scroll-mt-24 flex flex-col gap-2 rounded-lg border border-border bg-muted/20 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+        className="scroll-mt-24 flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800"
       >
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <ChevronRight className="size-4 shrink-0 opacity-40" />
-          <span className="font-medium text-foreground/70">{label}</span>
-          <span className="text-muted-foreground">✅ No issues found</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">
+            {label}
+          </span>
+          <span className="text-xs text-gray-400">✓ No issues found</span>
         </div>
-        <PillarScoreLabel pillarScores={pillarScores} pillarId={pillarId} noIssues />
+        <PillarScoreLabel pillarScores={pillarScores} pillarId={pillarId} />
       </div>
     );
   }
 
   return (
-    <section id={`pillar-${pillarId}`} className="scroll-mt-24 overflow-hidden rounded-lg border border-border">
+    <section id={`pillar-${pillarId}`} className="scroll-mt-24 border-b border-gray-100 dark:border-gray-800">
       <button
         type="button"
         onClick={onToggle}
-        className={cn(
-          "flex w-full flex-col gap-3 px-4 py-3 text-left transition-colors sm:flex-row sm:items-center sm:justify-between",
-          isOpen
-            ? "bg-background"
-            : "bg-muted/30 hover:bg-muted/50"
-        )}
+        className="flex w-full cursor-pointer flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/50 sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <ChevronDown
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              "size-4 shrink-0 text-gray-400 transition-transform duration-200",
               isOpen ? "rotate-0" : "-rotate-90"
             )}
           />
-          <span className="font-semibold text-foreground">{label}</span>
-          <SeverityCountBadges counts={counts} compact />
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {label}
+          </span>
+          <SeverityCounts counts={counts} />
         </div>
         <PillarScoreLabel pillarScores={pillarScores} pillarId={pillarId} />
       </button>
@@ -147,7 +141,7 @@ export function PillarIssueGroup({
         )}
       >
         <div className="overflow-hidden">
-          <div className="space-y-4 border-t border-border bg-background px-4 py-4">
+          <div className="border-t border-gray-100 bg-white dark:border-gray-800 dark:bg-transparent">
             {issues.map((issue) => (
               <IssueCard
                 key={issue.id}

@@ -44,7 +44,6 @@ interface AppStageSelectorProps {
   selectedStage: AppStage | null;
   onSelect: (stage: AppStage) => void;
   onNext: () => void;
-  onSkip: () => void;
   onBack: () => void;
 }
 
@@ -52,66 +51,61 @@ export function AppStageSelector({
   selectedStage,
   onSelect,
   onNext,
-  onSkip,
   onBack,
 }: AppStageSelectorProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>How live is your app?</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col shadow-none">
+      <CardHeader className="shrink-0 space-y-1 pb-3">
+        <CardTitle className="text-lg">How live is your app?</CardTitle>
         <p className="text-sm text-muted-foreground">
           This helps us prioritize what matters most
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2">
-          {APP_STAGE_OPTIONS.map((option) => {
-            const Icon = option.icon;
-            const isSelected = selectedStage === option.id;
+      <CardContent className="flex min-h-0 flex-1 flex-col p-4 pt-0">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-2">
+            {APP_STAGE_OPTIONS.map((option) => {
+              const Icon = option.icon;
+              const isSelected = selectedStage === option.id;
 
-            return (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => onSelect(option.id)}
-                className={cn(
-                  "flex flex-col items-start gap-2 rounded-xl border-2 p-5 text-left transition-colors",
-                  isSelected
-                    ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
-                    : "border-border bg-background hover:border-black/40 dark:hover:border-white/40"
-                )}
-              >
-                <Icon className="size-6 shrink-0" />
-                <span className="text-base font-semibold">{option.title}</span>
-                <span
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onSelect(option.id)}
                   className={cn(
-                    "text-sm",
+                    "flex flex-col items-start gap-1.5 rounded-lg border p-3 text-left transition-colors",
                     isSelected
-                      ? "text-white/80 dark:text-black/70"
-                      : "text-muted-foreground"
+                      ? "border-black bg-black text-white dark:border-white dark:bg-white dark:text-black"
+                      : "border-gray-200 bg-background hover:border-black/40 dark:border-gray-800 dark:hover:border-white/40"
                   )}
                 >
-                  {option.subtitle}
-                </span>
-              </button>
-            );
-          })}
+                  <Icon className="size-6 shrink-0" />
+                  <span className="text-sm font-semibold leading-tight">
+                    {option.title}
+                  </span>
+                  <span
+                    className={cn(
+                      "text-xs leading-snug",
+                      isSelected
+                        ? "text-white/80 dark:text-black/70"
+                        : "text-muted-foreground"
+                    )}
+                  >
+                    {option.subtitle}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <button
-          type="button"
-          onClick={onSkip}
-          className="text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          Skip this question →
-        </button>
-
-        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <div className="mt-3 flex shrink-0 flex-col-reverse gap-2 border-t border-gray-100 pt-3 dark:border-gray-800 sm:flex-row sm:justify-between">
           <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>
           <Button type="button" onClick={onNext} disabled={!selectedStage}>
-            Continue
+            Next
           </Button>
         </div>
       </CardContent>

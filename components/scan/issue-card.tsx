@@ -1,33 +1,17 @@
 "use client";
 
-import {
-  Check,
-  ChevronDown,
-  ChevronUp,
-  Circle,
-  Code,
-  Copy,
-  Database,
-  Settings,
-  Terminal,
-} from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SqlFixDisplay } from "@/components/scan/sql-fix-display";
 import { formatAllSteps, formatStepText } from "@/lib/scan/fix-parser";
 import {
   extractTerminalCommand,
   getCopyButtonLabel,
-  getFixTypeBadgeClass,
-  getFixTypeBadgeLabel,
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
 import { extractStackSummaryFromDiscovery } from "@/lib/scan/discovery-parser";
-import { getSeverityCardBorder, getSeverityColor } from "@/lib/scan/health-score";
 import { cn } from "@/lib/utils";
 import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 
@@ -39,26 +23,47 @@ interface IssueCardProps {
   onToggleFixed?: () => void;
 }
 
-function buildAskToolPrompt(
-  issue: ScanIssueRow,
-  stackSummary: string
-): string {
+const CODE_BLOCK =
+  "max-h-64 overflow-x-auto border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900";
+
+const COPY_BTN =
+  "inline-flex items-center gap-1.5 border border-gray-200 bg-transparent px-2.5 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800";
+
+const TOGGLE_BTN =
+  "text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300";
+
+function buildAskToolPrompt(issue: ScanIssueRow, stackSummary: string): string {
   return `I have a security issue in my app:
 ${issue.issue_name}: ${issue.description}
 My stack: ${stackSummary}
 Please fix this issue in my codebase without breaking my existing setup.`;
 }
 
-function confidenceLabel(confidence?: Confidence): string {
-  if (confidence === "high") return "High Confidence";
-  if (confidence === "low") return "Low Confidence";
-  return "Medium Confidence";
+function confidenceInline(confidence?: Confidence): string {
+  if (confidence === "high") return "high confidence";
+  if (confidence === "low") return "low confidence";
+  return "medium confidence";
 }
 
-function confidenceBadgeClass(confidence?: Confidence): string {
-  if (confidence === "high") return "bg-green-100 text-green-700 border-green-200";
-  if (confidence === "low") return "bg-muted text-muted-foreground border-border";
-  return "border border-border bg-muted text-muted-foreground";
+function getSeverityBorder(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical") return "border-l-[3px] border-red-400";
+  if (s === "warning") return "border-l-[3px] border-amber-400";
+  return "border-l-[3px] border-gray-300 dark:border-gray-600";
+}
+
+function getSeverityDot(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical") return "bg-red-400";
+  if (s === "warning") return "bg-amber-400";
+  return "bg-gray-400";
+}
+
+function getSeverityText(severity: string): string {
+  const s = severity.toLowerCase();
+  if (s === "critical") return "text-red-500 dark:text-red-400";
+  if (s === "warning") return "text-amber-600 dark:text-amber-400";
+  return "text-gray-400";
 }
 
 function resolveFixType(issue: ScanIssueRow, step?: FixStep): FixType {
@@ -66,30 +71,35 @@ function resolveFixType(issue: ScanIssueRow, step?: FixStep): FixType {
   return issue.fix_type ?? "cursor";
 }
 
-function FixTypeIcon({ fixType }: { fixType: FixType }) {
-  switch (fixType) {
-    case "sql":
-      return <Database className="size-4" />;
-    case "terminal":
-      return <Terminal className="size-4" />;
-    case "manual":
-      return <Settings className="size-4" />;
-    default:
-      return <Code className="size-4" />;
-  }
-}
-
-function FixTypeBadge({ fixType }: { fixType: FixType }) {
-  return (
-    <Badge variant="outline" className={getFixTypeBadgeClass(fixType)}>
-      {getFixTypeBadgeLabel(fixType)}
-    </Badge>
-  );
-}
-
 async function copyText(text: string, successMessage: string) {
   await navigator.clipboard.writeText(text);
   toast.success(successMessage);
+}
+
+function CopyButton({
+  onClick,
+  copied,
+  label,
+}: {
+  onClick: () => void;
+  copied: boolean;
+  label: string;
+}) {
+  return (
+    <button type="button" className={COPY_BTN} onClick={onClick}>
+      {copied ? (
+        <>
+          <Check className="size-3" />
+          Copied
+        </>
+      ) : (
+        <>
+          <Copy className="size-3" />
+          {label}
+        </>
+      )}
+    </button>
+  );
 }
 
 function TerminalFixDisplay({
@@ -104,54 +114,20 @@ function TerminalFixDisplay({
   const { explanation, command } = extractTerminalCommand(fixPrompt);
 
   if (!command) {
-    return (
-      <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-        {fixPrompt}
-      </pre>
-    );
+    return <pre className={CODE_BLOCK}>{fixPrompt}</pre>;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {explanation ? (
-        <div>
-          <p className="text-xs font-medium text-foreground">What this does:</p>
-          <p className="mt-1 text-sm text-muted-foreground">{explanation}</p>
-        </div>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{explanation}</p>
       ) : null}
-
-      <div>
-        <p className="text-xs font-medium text-foreground">Run this command:</p>
-        <div className="mt-2 overflow-hidden rounded-lg bg-black dark:bg-gray-950">
-          <div className="flex items-center gap-1.5 border-b border-white/10 px-3 py-2">
-            <span className="size-2.5 rounded-full bg-red-500" aria-hidden />
-            <span className="size-2.5 rounded-full bg-amber-500" aria-hidden />
-            <span className="size-2.5 rounded-full bg-green-500" aria-hidden />
-          </div>
-          <pre className="overflow-x-auto p-3 font-mono text-sm text-green-400">
-            {command}
-          </pre>
-        </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="mt-3 gap-2"
-          onClick={() => onCopyCommand(command)}
-        >
-          {copied ? (
-            <>
-              <Check className="size-4" />
-              Copied
-            </>
-          ) : (
-            <>
-              <Copy className="size-4" />
-              Copy Command
-            </>
-          )}
-        </Button>
-      </div>
+      <pre className={CODE_BLOCK}>{command}</pre>
+      <CopyButton
+        onClick={() => onCopyCommand(command)}
+        copied={copied}
+        label="Copy command"
+      />
     </div>
   );
 }
@@ -179,409 +155,254 @@ export function IssueCard({
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
   const isUncertainFix = issue.fix_confidence === "uncertain";
+  const severityKey = issue.severity.toLowerCase();
 
   useEffect(() => {
-    if (isFixed) {
-      setFixExpanded(false);
-    }
+    if (isFixed) setFixExpanded(false);
   }, [isFixed]);
 
-  const handleCopySingle = async () => {
+  const handleCopy = async (
+    text: string,
+    message: string,
+    setCopied: (v: boolean) => void
+  ) => {
     try {
-      await copyText(
-        issue.fix_prompt,
-        `${getCopyButtonLabel(singleFixType, tool)} copied to clipboard`
-      );
-      setCopiedSingle(true);
-      setTimeout(() => setCopiedSingle(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  const handleCopyCommand = async (command: string) => {
-    try {
-      await copyText(command, "Command copied to clipboard");
-      setCopiedCommand(true);
-      setTimeout(() => setCopiedCommand(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  const handleCopyStepCommand = async (stepNumber: number, command: string) => {
-    try {
-      await copyText(command, "Command copied to clipboard");
-      setCopiedStepCommands((prev) => ({ ...prev, [stepNumber]: true }));
-      setTimeout(
-        () => setCopiedStepCommands((prev) => ({ ...prev, [stepNumber]: false })),
-        2000
-      );
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  const handleCopyStep = async (step: FixStep) => {
-    const stepFixType = resolveFixType(issue, step);
-    try {
-      await copyText(
-        formatStepText(step),
-        `${getCopyButtonLabel(stepFixType, tool)} copied to clipboard`
-      );
-      setCopiedSteps((prev) => ({ ...prev, [step.stepNumber]: true }));
-      setTimeout(
-        () => setCopiedSteps((prev) => ({ ...prev, [step.stepNumber]: false })),
-        2000
-      );
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  const handleCopyAskTool = async () => {
-    try {
-      await copyText(
-        buildAskToolPrompt(issue, stackSummary),
-        `Ask ${tool} prompt copied to clipboard`
-      );
-      setCopiedAskTool(true);
-      setTimeout(() => setCopiedAskTool(false), 2000);
-    } catch {
-      toast.error("Failed to copy");
-    }
-  };
-
-  const handleCopyAll = async () => {
-    try {
-      const combined = formatAllSteps(steps);
-      await copyText(combined, "All steps copied to clipboard");
-      setCopiedAll(true);
-      setTimeout(() => setCopiedAll(false), 2000);
+      await copyText(text, message);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy");
     }
   };
 
   return (
-    <Card
+    <article
       className={cn(
-        isFixed
-          ? "border-l-4 border-green-500 opacity-75"
-          : getSeverityCardBorder(issue.severity)
+        "border-b border-gray-100 bg-white px-4 py-4 dark:border-gray-800 dark:bg-transparent",
+        !isFixed && getSeverityBorder(issue.severity),
+        isFixed && "border-l-[3px] border-gray-300 opacity-60 dark:border-gray-600"
       )}
     >
-      <CardHeader className="pb-3">
-        <div className="flex flex-wrap items-start justify-between gap-2">
-          <div className="space-y-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge
-                variant="outline"
-                className={getSeverityColor(issue.severity)}
-              >
-                {issue.severity}
-              </Badge>
-              <Badge
-                variant="outline"
-                className={confidenceBadgeClass(issue.confidence)}
-              >
-                {confidenceLabel(issue.confidence)}
-              </Badge>
-              <CardTitle
-                className={cn(
-                  "text-base text-foreground",
-                  isFixed && "line-through"
-                )}
-              >
-                {issue.issue_name}
-              </CardTitle>
-            </div>
-            {(issue.file_path || issue.line_number) && (
-              <p className="font-mono text-xs text-muted-foreground">
-                {issue.file_path}
-                {issue.line_number ? `:${issue.line_number}` : ""}
-              </p>
-            )}
-          </div>
+      {/* Header */}
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className={cn("size-2 shrink-0 rounded-full", getSeverityDot(issue.severity))} />
+        <span
+          className={cn(
+            "text-xs font-medium uppercase tracking-wide",
+            getSeverityText(issue.severity)
+          )}
+        >
+          {severityKey}
+        </span>
+        <span
+          className={cn(
+            "text-sm font-semibold text-gray-900 dark:text-gray-100",
+            isFixed && "text-gray-400 line-through dark:text-gray-500"
+          )}
+        >
+          {issue.issue_name}
+        </span>
+        <span className="text-xs text-gray-400 dark:text-gray-500">
+          · {confidenceInline(issue.confidence)}
+        </span>
+      </div>
+
+      {(issue.file_path || issue.line_number) && (
+        <p className="mt-1 font-mono text-xs text-gray-400 dark:text-gray-500">
+          {issue.file_path}
+          {issue.line_number ? `:${issue.line_number}` : ""}
+        </p>
+      )}
+
+      <p className="mt-2 text-sm font-normal text-gray-600 dark:text-gray-400">
+        {issue.description}
+      </p>
+
+      {issue.evidence ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className={TOGGLE_BTN}
+            onClick={() => setEvidenceExpanded(!evidenceExpanded)}
+          >
+            {evidenceExpanded ? "Hide code evidence ↑" : "Show code evidence ↓"}
+          </button>
+          {evidenceExpanded ? (
+            <pre className={cn(CODE_BLOCK, "mt-2 max-h-32")}>{issue.evidence}</pre>
+          ) : null}
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground">{issue.description}</p>
+      ) : null}
 
-        {issue.evidence && (
-          <div>
-            <button
-              type="button"
-              onClick={() => setEvidenceExpanded(!evidenceExpanded)}
-              className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/20 px-4 py-2 text-sm font-medium hover:bg-muted/40"
-            >
-              <span>Code Evidence</span>
-              {evidenceExpanded ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronDown className="size-4" />
-              )}
-            </button>
-            {evidenceExpanded && (
-              <pre className="mt-2 max-h-32 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3 font-mono text-xs">
-                {issue.evidence}
-              </pre>
-            )}
-          </div>
-        )}
+      {!isFixed ? (
+        <div className="mt-3">
+          <button
+            type="button"
+            className={TOGGLE_BTN}
+            onClick={() => setFixExpanded(!fixExpanded)}
+          >
+            {fixExpanded ? "Hide fix prompt ↑" : "Show fix prompt ↓"}
+          </button>
 
-        {!isFixed ? (
-          <div>
-            <button
-              type="button"
-              onClick={() => setFixExpanded(!fixExpanded)}
-              className="flex w-full items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-2 text-sm font-medium hover:bg-muted/50"
-            >
-              <span>Fix Prompt</span>
-              {fixExpanded ? (
-                <ChevronUp className="size-4" />
-              ) : (
-                <ChevronDown className="size-4" />
-              )}
-            </button>
-
-            {fixExpanded && (
-              <div className="mt-3 space-y-3">
+          {fixExpanded ? (
+            <div className="mt-3 space-y-4">
               {isMultiStep ? (
                 <>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
                     {getMultiStepIntro(
                       steps.map((step) => resolveFixType(issue, step)),
                       tool
                     )}
                   </p>
+                  {steps.map((step) => {
+                    const stepFixType = resolveFixType(issue, step);
+                    const stepTerminal = stepFixType === "terminal";
+                    const stepParsed = stepTerminal
+                      ? extractTerminalCommand(step.instruction)
+                      : null;
 
-                  <div className="space-y-3">
-                    {steps.map((step) => {
-                      const stepFixType = resolveFixType(issue, step);
-                      const stepCopied = copiedSteps[step.stepNumber];
-                      const stepCommandCopied = copiedStepCommands[step.stepNumber];
-                      const stepTerminal = stepFixType === "terminal";
-                      const stepParsed = stepTerminal
-                        ? extractTerminalCommand(step.instruction)
-                        : null;
-
-                      return (
-                        <div
-                          key={step.stepNumber}
-                          className="rounded-lg border border-border bg-muted/20 p-4"
-                        >
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <Badge variant="secondary">
-                              Step {step.stepNumber}
-                            </Badge>
-                            <FixTypeBadge fixType={stepFixType} />
-                            <span className="font-mono text-xs font-medium">
-                              {step.filePath}
-                            </span>
-                          </div>
-                          {stepTerminal && stepParsed?.command ? (
-                            <TerminalFixDisplay
-                              fixPrompt={step.instruction}
-                              copied={!!stepCommandCopied}
-                              onCopyCommand={(command) =>
-                                handleCopyStepCommand(step.stepNumber, command)
-                              }
-                            />
-                          ) : (
-                            <>
-                              <pre className="max-h-48 overflow-y-auto rounded-lg border border-border bg-muted/40 p-3 text-xs leading-relaxed whitespace-pre-wrap">
-                                {step.instruction}
-                              </pre>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="mt-3 gap-2"
-                                onClick={() => handleCopyStep(step)}
-                              >
-                                {stepCopied ? (
-                                  <>
-                                    <Check className="size-4" />
-                                    Copied
-                                  </>
-                                ) : (
-                                  <>
-                                    <FixTypeIcon fixType={stepFixType} />
-                                    {getCopyButtonLabel(stepFixType, tool)}
-                                  </>
-                                )}
-                              </Button>
-                            </>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">
-                    Complete all steps before rescanning to verify the fix
-                  </p>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-2"
-                    onClick={handleCopyAll}
-                  >
-                    {copiedAll ? (
-                      <>
-                        <Check className="size-4" />
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="size-4" />
-                        Copy All Steps
-                      </>
-                    )}
-                  </Button>
-
-                  {isUncertainFix ? (
-                    <div className="space-y-3 border-t border-border pt-3">
-                      <p className="text-xs text-muted-foreground">
-                        We&apos;re not 100% certain about this fix for your exact
-                        setup. We recommend asking your AI tool directly.
-                      </p>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="gap-2"
-                        onClick={handleCopyAskTool}
+                    return (
+                      <div
+                        key={step.stepNumber}
+                        className="border-t border-gray-100 pt-3 dark:border-gray-800"
                       >
-                        {copiedAskTool ? (
-                          <>
-                            <Check className="size-4" />
-                            Copied
-                          </>
+                        <p className="mb-2 text-xs text-gray-500">
+                          Step {step.stepNumber} ·{" "}
+                          <span className="font-mono">{step.filePath}</span>
+                        </p>
+                        {stepTerminal && stepParsed?.command ? (
+                          <TerminalFixDisplay
+                            fixPrompt={step.instruction}
+                            copied={!!copiedStepCommands[step.stepNumber]}
+                            onCopyCommand={(command) =>
+                              handleCopy(
+                                command,
+                                "Command copied",
+                                (v) =>
+                                  setCopiedStepCommands((prev) => ({
+                                    ...prev,
+                                    [step.stepNumber]: v,
+                                  }))
+                              )
+                            }
+                          />
                         ) : (
-                          <>Ask {tool} to fix this</>
+                          <>
+                            <pre className={CODE_BLOCK}>{step.instruction}</pre>
+                            <div className="mt-2">
+                              <CopyButton
+                                onClick={() =>
+                                  handleCopy(
+                                    formatStepText(step),
+                                    "Copied to clipboard",
+                                    (v) =>
+                                      setCopiedSteps((prev) => ({
+                                        ...prev,
+                                        [step.stepNumber]: v,
+                                      }))
+                                  )
+                                }
+                                copied={!!copiedSteps[step.stepNumber]}
+                                label={getCopyButtonLabel(stepFixType, tool)}
+                              />
+                            </div>
+                          </>
                         )}
-                      </Button>
+                      </div>
+                    );
+                  })}
+                  <CopyButton
+                    onClick={() =>
+                      handleCopy(formatAllSteps(steps), "All steps copied", setCopiedAll)
+                    }
+                    copied={copiedAll}
+                    label="Copy all steps"
+                  />
+                  {isUncertainFix ? (
+                    <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        We&apos;re not 100% certain about this fix for your exact
+                        setup. Ask {tool} directly.
+                      </p>
+                      <CopyButton
+                        onClick={() =>
+                          handleCopy(
+                            buildAskToolPrompt(issue, stackSummary),
+                            `Prompt copied for ${tool}`,
+                            setCopiedAskTool
+                          )
+                        }
+                        copied={copiedAskTool}
+                        label={`Ask ${tool} to fix this`}
+                      />
                     </div>
                   ) : null}
                 </>
+              ) : singleFixType === "sql" ? (
+                <SqlFixDisplay issue={issue} tool={tool} />
+              ) : singleFixType === "terminal" &&
+                extractTerminalCommand(issue.fix_prompt).command ? (
+                <TerminalFixDisplay
+                  fixPrompt={issue.fix_prompt}
+                  copied={copiedCommand}
+                  onCopyCommand={(command) =>
+                    handleCopy(command, "Command copied", setCopiedCommand)
+                  }
+                />
               ) : (
                 <>
-                  <FixTypeBadge fixType={singleFixType} />
-                  {singleFixType === "sql" ? (
-                    <SqlFixDisplay issue={issue} tool={tool} />
-                  ) : singleFixType === "terminal" &&
-                  extractTerminalCommand(issue.fix_prompt).command ? (
-                    <TerminalFixDisplay
-                      fixPrompt={issue.fix_prompt}
-                      copied={copiedCommand}
-                      onCopyCommand={handleCopyCommand}
-                    />
+                  <pre className={CODE_BLOCK}>{issue.fix_prompt}</pre>
+                  {isUncertainFix ? (
+                    <div className="flex flex-col gap-2 sm:flex-row">
+                      <CopyButton
+                        onClick={() =>
+                          handleCopy(issue.fix_prompt, "Fix prompt copied", setCopiedSingle)
+                        }
+                        copied={copiedSingle}
+                        label="Copy fix prompt"
+                      />
+                      <CopyButton
+                        onClick={() =>
+                          handleCopy(
+                            buildAskToolPrompt(issue, stackSummary),
+                            `Prompt copied for ${tool}`,
+                            setCopiedAskTool
+                          )
+                        }
+                        copied={copiedAskTool}
+                        label={`Ask ${tool} to fix this`}
+                      />
+                    </div>
                   ) : (
-                    <>
-                      <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-                        {issue.fix_prompt}
-                      </pre>
-                      {isUncertainFix ? (
-                        <div className="space-y-3">
-                          <p className="text-xs text-muted-foreground">
-                            We&apos;re not 100% certain about this fix for your
-                            exact setup. We recommend asking your AI tool directly.
-                          </p>
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              className="gap-2"
-                              onClick={handleCopySingle}
-                            >
-                              {copiedSingle ? (
-                                <>
-                                  <Check className="size-4" />
-                                  Copied
-                                </>
-                              ) : (
-                                <>
-                                  <FixTypeIcon fixType={singleFixType} />
-                                  Copy Fix Prompt
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="gap-2"
-                              onClick={handleCopyAskTool}
-                            >
-                              {copiedAskTool ? (
-                                <>
-                                  <Check className="size-4" />
-                                  Copied
-                                </>
-                              ) : (
-                                <>Ask {tool} to fix this</>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="gap-2"
-                          onClick={handleCopySingle}
-                        >
-                          {copiedSingle ? (
-                            <>
-                              <Check className="size-4" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <FixTypeIcon fixType={singleFixType} />
-                              {getCopyButtonLabel(singleFixType, tool)}
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </>
+                    <CopyButton
+                      onClick={() =>
+                        handleCopy(
+                          issue.fix_prompt,
+                          `${getCopyButtonLabel(singleFixType, tool)} copied`,
+                          setCopiedSingle
+                        )
+                      }
+                      copied={copiedSingle}
+                      label={getCopyButtonLabel(singleFixType, tool)}
+                    />
                   )}
                 </>
               )}
             </div>
-          )}
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      ) : null}
 
-        {onToggleFixed ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className={cn(
-              "gap-2",
-              isFixed && "border-green-200 text-green-600 dark:border-green-800"
-            )}
-            onClick={onToggleFixed}
-          >
-            {isFixed ? (
-              <>
-                <Check className="size-4" />
-                ✓ Fixed — Undo
-              </>
-            ) : (
-              <>
-                <Circle className="size-4" />
-                Mark as Fixed
-              </>
-            )}
-          </Button>
-        ) : null}
-      </CardContent>
-    </Card>
+      {onToggleFixed ? (
+        <label className="mt-4 inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <input
+            type="checkbox"
+            checked={isFixed}
+            onChange={onToggleFixed}
+            className="size-3.5 rounded border-gray-300 dark:border-gray-600"
+          />
+          {isFixed ? "Fixed" : "Mark as fixed"}
+        </label>
+      ) : null}
+    </article>
   );
 }

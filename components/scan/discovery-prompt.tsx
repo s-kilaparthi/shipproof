@@ -49,59 +49,60 @@ export function DiscoveryPrompt({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Discovery prompt</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col shadow-none">
+      <CardHeader className="shrink-0 space-y-1 pb-3">
+        <CardTitle className="text-lg">Discovery prompt</CardTitle>
         <p className="text-sm text-muted-foreground">
           Run this prompt in {selectedTool} and paste the response below.
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-sm font-medium">Copy this prompt</p>
-            <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
-              {copied ? (
-                <>
-                  <Check className="size-4" />
-                  Copied
-                </>
-              ) : (
-                <>
-                  <Copy className="size-4" />
-                  Copy Prompt
-                </>
-              )}
-            </Button>
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-0">
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">Copy this prompt</p>
+              <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+                {copied ? (
+                  <>
+                    <Check className="size-4" />
+                    Copied
+                  </>
+                ) : (
+                  <>
+                    <Copy className="size-4" />
+                    Copy prompt
+                  </>
+                )}
+              </Button>
+            </div>
+            <pre className="max-h-32 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
+              {DISCOVERY_PROMPT}
+            </pre>
           </div>
-          <pre className="max-h-64 overflow-y-auto rounded-lg border border-border bg-muted/40 p-4 text-xs leading-relaxed whitespace-pre-wrap">
-            {DISCOVERY_PROMPT}
-          </pre>
+
+          <div className="space-y-1.5">
+            <label htmlFor="discovery-response" className="text-sm font-medium">
+              Paste the response from {selectedTool}
+            </label>
+            <Textarea
+              id="discovery-response"
+              placeholder={`Paste the response from ${selectedTool} here...`}
+              value={discoveryResponse}
+              onChange={(e) => onResponseChange(e.target.value)}
+              disabled={isSubmitting}
+              className="h-32 resize-none"
+            />
+          </div>
+
+          {isSubmitting && (
+            <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 py-4 text-sm text-muted-foreground dark:border-gray-800 dark:bg-gray-900/50">
+              <Loader2 className="size-4 animate-spin" />
+              Scanning your codebase...
+            </div>
+          )}
         </div>
 
-        <div className="space-y-2">
-          <label htmlFor="discovery-response" className="text-sm font-medium">
-            Paste the response from {selectedTool} here
-          </label>
-          <Textarea
-            id="discovery-response"
-            placeholder={`Paste the response from ${selectedTool} here...`}
-            value={discoveryResponse}
-            onChange={(e) => onResponseChange(e.target.value)}
-            rows={10}
-            disabled={isSubmitting}
-            className="min-h-[200px] resize-y"
-          />
-        </div>
-
-        {isSubmitting && (
-          <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-muted/30 py-6 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <span>Scanning your codebase...</span>
-          </div>
-        )}
-
-        <div className="flex justify-between pt-2">
+        <div className="flex shrink-0 justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
           <Button
             type="button"
             variant="outline"
@@ -121,7 +122,7 @@ export function DiscoveryPrompt({
                 Scanning...
               </>
             ) : (
-              "Start Scan"
+              "Start scan"
             )}
           </Button>
         </div>

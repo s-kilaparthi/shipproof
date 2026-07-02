@@ -44,46 +44,48 @@ export function ToolSelector({
   onBack,
 }: ToolSelectorProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Which tool did you build with?</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col shadow-none">
+      <CardHeader className="shrink-0 space-y-1 pb-3">
+        <CardTitle className="text-lg">Which tool did you build with?</CardTitle>
         <p className="text-sm text-muted-foreground">
           We&apos;ll tailor fix prompts to your AI coding tool.
         </p>
       </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TOOL_OPTIONS.map((tool) => {
-            const Icon = TOOL_ICONS[tool.id];
-            const isSelected = selectedTool === tool.id;
+      <CardContent className="flex min-h-0 flex-1 flex-col p-4 pt-0">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="grid grid-cols-3 gap-2">
+            {TOOL_OPTIONS.map((tool) => {
+              const Icon = TOOL_ICONS[tool.id];
+              const isSelected = selectedTool === tool.id;
 
-            return (
-              <button
-                key={tool.id}
-                type="button"
-                onClick={() => onSelect(tool.id)}
-                className={cn(
-                  "flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all hover:bg-muted/50",
-                  isSelected
-                    ? "border-2 border-black bg-muted/50 dark:border-white"
-                    : "border-gray-200 hover:shadow-sm dark:border-gray-800"
-                )}
-              >
-                <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-                  <Icon className="size-5 text-foreground" />
-                </div>
-                <div>
-                  <p className="font-semibold text-foreground">{tool.name}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {tool.description}
-                  </p>
-                </div>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={tool.id}
+                  type="button"
+                  onClick={() => onSelect(tool.id)}
+                  className={cn(
+                    "flex flex-col items-start gap-2 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50",
+                    isSelected
+                      ? "border-2 border-black bg-muted/50 dark:border-white"
+                      : "border-gray-200 dark:border-gray-800"
+                  )}
+                >
+                  <Icon className="size-6 text-foreground" />
+                  <div>
+                    <p className="text-sm font-semibold leading-tight text-foreground">
+                      {tool.name}
+                    </p>
+                    <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-muted-foreground">
+                      {tool.description}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
-        <div className="flex justify-between pt-2">
+        <div className="mt-3 flex shrink-0 justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
           <Button type="button" variant="outline" onClick={onBack}>
             Back
           </Button>

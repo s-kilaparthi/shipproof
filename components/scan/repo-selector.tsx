@@ -70,20 +70,15 @@ export function RepoSelector({
   }, [repos, search]);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Select a GitHub repository</CardTitle>
+    <Card className="flex h-full min-h-0 flex-col shadow-none">
+      <CardHeader className="shrink-0 space-y-1 pb-3">
+        <CardTitle className="text-lg">Select a GitHub repository</CardTitle>
         <p className="text-sm text-muted-foreground">
           Choose the repository you want to scan for security issues.
         </p>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          We request GitHub&apos;s repo scope (required for private repos) but
-          ShipProof&apos;s code only ever calls read endpoints — never write or
-          delete.
-        </p>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="relative">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-0">
+        <div className="relative shrink-0">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search repositories..."
@@ -94,79 +89,75 @@ export function RepoSelector({
           />
         </div>
 
-        {loading && (
-          <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-            <Loader2 className="size-5 animate-spin" />
-            <span>Loading your repositories...</span>
-          </div>
-        )}
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-8 text-muted-foreground">
+              <Loader2 className="size-5 animate-spin" />
+              <span className="text-sm">Loading repositories...</span>
+            </div>
+          )}
 
-        {error && !loading && (
-          <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
-            <p>{error}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              onClick={fetchRepos}
-            >
-              Try again
-            </Button>
-          </div>
-        )}
+          {error && !loading && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+              <p>{error}</p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={fetchRepos}
+              >
+                Try again
+              </Button>
+            </div>
+          )}
 
-        {!loading && !error && filteredRepos.length === 0 && (
-          <p className="py-8 text-center text-sm text-muted-foreground">
-            No repositories found.
-          </p>
-        )}
+          {!loading && !error && filteredRepos.length === 0 && (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              No repositories found.
+            </p>
+          )}
 
-        {!loading && !error && filteredRepos.length > 0 && (
-          <div className="max-h-[320px] space-y-2 overflow-y-auto pr-1">
-            {filteredRepos.map((repo) => {
-              const isSelected = selectedRepo?.id === repo.id;
+          {!loading && !error && filteredRepos.length > 0 && (
+            <div className="max-h-48 space-y-2 overflow-y-auto pr-1">
+              {filteredRepos.map((repo) => {
+                const isSelected = selectedRepo?.id === repo.id;
 
-              return (
-                <button
-                  key={repo.id}
-                  type="button"
-                  onClick={() => onSelect(repo)}
-                  className={cn(
-                    "w-full rounded-lg border p-4 text-left transition-all hover:bg-muted/50",
-                    isSelected
-                      ? "border-2 border-black bg-muted/50 dark:border-white"
-                      : "border-gray-200 hover:shadow-sm dark:border-gray-800"
-                  )}
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-medium text-foreground">{repo.full_name}</span>
-                    <Badge variant={repo.private ? "secondary" : "outline"}>
-                      {repo.private ? "Private" : "Public"}
-                    </Badge>
-                  </div>
-                  {repo.description && (
-                    <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                      {repo.description}
-                    </p>
-                  )}
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Updated{" "}
-                    {new Date(repo.updated_at).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })}
-                  </p>
-                </button>
-              );
-            })}
-          </div>
-        )}
+                return (
+                  <button
+                    key={repo.id}
+                    type="button"
+                    onClick={() => onSelect(repo)}
+                    className={cn(
+                      "w-full rounded-lg border p-3 text-left transition-colors hover:bg-muted/50",
+                      isSelected
+                        ? "border-2 border-black bg-muted/50 dark:border-white"
+                        : "border-gray-200 dark:border-gray-800"
+                    )}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-medium text-foreground">
+                        {repo.full_name}
+                      </span>
+                      <Badge variant={repo.private ? "secondary" : "outline"}>
+                        {repo.private ? "Private" : "Public"}
+                      </Badge>
+                    </div>
+                    {repo.description && (
+                      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+                        {repo.description}
+                      </p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-        <div className="space-y-2 border-t border-border pt-4">
+        <div className="shrink-0 space-y-1.5 border-t border-gray-100 pt-3 dark:border-gray-800">
           <label htmlFor="app-domain" className="text-sm font-medium">
-            App Domain (optional)
+            App domain (optional)
           </label>
           <Input
             id="app-domain"
@@ -175,11 +166,11 @@ export function RepoSelector({
             onChange={(e) => onDomainChange(e.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Add your domain to check SSL and security headers
+            Check SSL and security headers
           </p>
         </div>
 
-        <div className="flex justify-end pt-2">
+        <div className="flex shrink-0 justify-end border-t border-gray-100 pt-3 dark:border-gray-800">
           <Button type="button" onClick={onNext} disabled={!selectedRepo || loading}>
             Next
           </Button>

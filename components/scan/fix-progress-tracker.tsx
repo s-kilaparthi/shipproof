@@ -2,21 +2,11 @@
 
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-
 interface FixProgressTrackerProps {
   fixedCount: number;
   totalCount: number;
   rescanHref: string;
   onRescanClick?: () => void;
-}
-
-function getProgressBarColor(percent: number): string {
-  if (percent >= 100) return "bg-green-500";
-  if (percent >= 67) return "bg-blue-500";
-  if (percent >= 34) return "bg-amber-500";
-  return "bg-red-500";
 }
 
 export function FixProgressTracker({
@@ -29,38 +19,34 @@ export function FixProgressTracker({
   const allFixed = totalCount > 0 && fixedCount >= totalCount;
 
   return (
-    <div className="mb-8 space-y-4 rounded-xl border border-border bg-muted/20 p-4 sm:p-6">
+    <div className="mb-6 space-y-3 border border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/50 sm:px-5">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">Fix Progress</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+          Fix progress
+        </h2>
+        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
           {fixedCount} of {totalCount} issues marked as fixed
         </p>
       </div>
 
-      <div className="h-2.5 w-full overflow-hidden rounded-full bg-muted">
+      <div className="h-1.5 w-full overflow-hidden bg-gray-200 dark:bg-gray-700">
         <div
-          className={cn(
-            "h-full rounded-full transition-all duration-300",
-            getProgressBarColor(percent)
-          )}
+          className="h-full bg-gray-900 transition-all duration-300 dark:bg-white"
           style={{ width: `${percent}%` }}
         />
       </div>
 
       {allFixed ? (
-        <p className="text-sm font-medium text-green-600">
-          All fixes applied! Ready to rescan?
-        </p>
-      ) : null}
-
-      {allFixed ? (
-        <div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950/30">
-          <p className="text-sm text-foreground">
-            Great work! You&apos;ve applied all fixes. Run a fresh scan to verify
-            your improvements.
+        <div className="flex flex-col gap-2 border-t border-gray-100 pt-3 dark:border-gray-800 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-gray-600 dark:text-gray-400">
+            All fixes marked. Run a fresh scan to verify your improvements.
           </p>
-          <Link href={rescanHref} onClick={onRescanClick} className="mt-3 inline-block">
-            <Button size="sm">Rescan Now</Button>
+          <Link
+            href={rescanHref}
+            onClick={onRescanClick}
+            className="text-xs font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100"
+          >
+            Rescan now →
           </Link>
         </div>
       ) : null}

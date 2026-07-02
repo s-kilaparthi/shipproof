@@ -28,22 +28,23 @@ export function ScoreCelebrationBanner({
   return (
     <div
       role="status"
-      className="relative mb-6 rounded-xl border border-green-200 bg-green-50 px-4 py-4 text-green-900 dark:border-green-800 dark:bg-green-950/40 dark:text-green-100 sm:px-6"
+      className="relative mb-6 border border-gray-200 bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900/30 sm:px-5"
     >
       <button
         type="button"
         onClick={() => setVisible(false)}
-        className="absolute right-3 top-3 rounded-md p-1 text-green-700 hover:bg-green-100 dark:text-green-300 dark:hover:bg-green-900/50"
+        className="absolute right-3 top-3 p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         aria-label="Dismiss"
       >
         <X className="size-4" />
       </button>
-      <p className="pr-8 text-base font-semibold sm:text-lg">
-        Your score improved from {previousScore} to {currentScore}!
+      <p className="pr-8 text-sm font-semibold text-gray-900 dark:text-gray-100">
+        Score improved from {previousScore} to{" "}
+        <span className="text-green-600 dark:text-green-400">{currentScore}</span>
       </p>
-      <p className="mt-1 text-sm text-green-800 dark:text-green-200">
-        You fixed {fixedCount} issue{fixedCount === 1 ? "" : "s"} since your last
-        scan. {remainingCount} issue{remainingCount === 1 ? "" : "s"} remaining.
+      <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+        {fixedCount} issue{fixedCount === 1 ? "" : "s"} resolved since last scan ·{" "}
+        {remainingCount} remaining
       </p>
     </div>
   );

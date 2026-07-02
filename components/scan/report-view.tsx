@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Info, RefreshCw, Share2, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { RefreshCw, Share2, ShieldCheck } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { ScoreCelebrationBanner } from "@/components/scan/score-celebration-banner";
@@ -13,15 +13,8 @@ import {
   PillarIssueGroup,
 } from "@/components/scan/pillar-issue-group";
 import { PillarScoreCard } from "@/components/scan/pillar-score-card";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import {
-  countIssuesBySeverity,
-  getHealthScoreBg,
-  getHealthScoreColor,
-  getScoreLabel,
-} from "@/lib/scan/health-score";
+import { countIssuesBySeverity, getScoreLabel } from "@/lib/scan/health-score";
 import { groupIssuesByPillar } from "@/lib/scan/results";
 import {
   clearFixedIssues,
@@ -29,6 +22,7 @@ import {
   readFixedIssueIds,
   unmarkIssueFixed,
 } from "@/lib/scan/fixed-issues";
+import { cn } from "@/lib/utils";
 import {
   ALL_PILLARS,
   DISPLAY_PILLARS,
@@ -57,25 +51,62 @@ interface ReportViewProps {
   canQuickRescan?: boolean;
 }
 
-function SummaryBadges({ counts }: { counts: ReturnType<typeof countIssuesBySeverity> }) {
+function getScoreCircleClasses(score: number): {
+  border: string;
+  text: string;
+} {
+  if (score < 50) {
+    return { border: "border-red-300", text: "text-red-500" };
+  }
+  if (score <= 79) {
+    return { border: "border-amber-300", text: "text-amber-500" };
+  }
+  return {
+    border: "border-green-300",
+    text: "text-green-500 dark:text-green-400",
+  };
+}
+
+function SummaryCounts({
+  counts,
+}: {
+  counts: ReturnType<typeof countIssuesBySeverity>;
+}) {
+  const parts: ReactNode[] = [];
+
+  if (counts.critical > 0) {
+    parts.push(
+      <span key="critical" className="font-semibold text-red-500">
+        {counts.critical} critical
+      </span>
+    );
+  }
+  if (counts.warning > 0) {
+    parts.push(
+      <span key="warning" className="font-semibold text-amber-500">
+        {counts.warning} warning{counts.warning === 1 ? "" : "s"}
+      </span>
+    );
+  }
+  if (counts.info > 0) {
+    parts.push(
+      <span key="info" className="font-semibold text-gray-500">
+        {counts.info} info
+      </span>
+    );
+  }
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {counts.critical > 0 && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-sm text-red-700 border border-red-200 dark:bg-red-950 dark:text-red-400 dark:border-red-800">
-          🔴 {counts.critical} Critical
+    <p className="flex flex-wrap items-center gap-x-2 text-sm">
+      {parts.map((part, index) => (
+        <span key={index} className="inline-flex items-center gap-2">
+          {index > 0 ? (
+            <span className="text-gray-300 dark:text-gray-600">·</span>
+          ) : null}
+          {part}
         </span>
-      )}
-      {counts.warning > 0 && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 text-sm text-amber-700 border border-amber-200 dark:bg-amber-950 dark:text-amber-400 dark:border-amber-800">
-          🟡 {counts.warning} Warning
-        </span>
-      )}
-      {counts.info > 0 && (
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-gray-50 px-3 py-1 text-sm text-gray-700 border border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700">
-          ⚫ {counts.info} Info
-        </span>
-      )}
-    </div>
+      ))}
+    </p>
   );
 }
 
@@ -98,6 +129,7 @@ export function ReportView({
   const counts = countIssuesBySeverity(issues);
   const grouped = groupIssuesByPillar(issues);
   const scoreLabel = getScoreLabel(pillarScores.overall);
+  const scoreCircle = getScoreCircleClasses(pillarScores.overall);
   const rescanHref = `/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`;
 
   const initialExpanded = useMemo(
@@ -149,9 +181,8 @@ export function ReportView({
   };
 
   const handleShare = async () => {
-    const url = window.location.href;
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(window.location.href);
       toast.success("Report link copied to clipboard");
     } catch {
       toast.error("Failed to copy link");
@@ -172,56 +203,46 @@ export function ReportView({
       {/* 1. Header */}
       <div className="mb-8 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <ShieldCheck className="size-7 text-foreground" />
-            <span className="text-lg font-semibold text-foreground">ShipProof</span>
+          <div className="flex items-center gap-2 text-gray-900 dark:text-gray-100">
+            <ShieldCheck className="size-5" />
+            <span className="text-sm font-medium">ShipProof</span>
           </div>
-          <h1 className="mt-4 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          <h1 className="mt-3 text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-3xl">
             {repoName}
           </h1>
-          <div className="mt-2">
-            {isQuickRescan ? (
-              <Badge variant="outline" className="text-xs font-normal">
-                ⚡ Quick Rescan · Discovery from {discoveryAgeLabel ?? "previous scan"}
-              </Badge>
-            ) : (
-              <Badge variant="outline" className="text-xs font-normal">
-                🔄 Full Rescan · Fresh discovery
-              </Badge>
-            )}
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>Built with {tool}</span>
-            <span>·</span>
-            <span>Scanned {scanDate}</span>
-            <Badge variant="outline">{status}</Badge>
-          </div>
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+            {isQuickRescan
+              ? `Quick rescan · discovery from ${discoveryAgeLabel ?? "previous scan"}`
+              : "Full rescan · fresh discovery"}
+          </p>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Built with {tool} · Scanned {scanDate} · {status}
+          </p>
         </div>
 
         <div className="flex flex-col items-center">
           <div
-            className={`flex size-32 flex-col items-center justify-center rounded-full border-4 ${getHealthScoreBg(pillarScores.overall)}`}
+            className={cn(
+              "flex size-24 flex-col items-center justify-center rounded-full border-2 bg-transparent",
+              scoreCircle.border
+            )}
           >
-            <span
-              className={`text-4xl font-bold ${getHealthScoreColor(pillarScores.overall)}`}
-            >
+            <span className={cn("text-3xl font-bold", scoreCircle.text)}>
               {pillarScores.overall}
             </span>
           </div>
-          <p
-            className={`mt-3 text-sm font-semibold ${getHealthScoreColor(pillarScores.overall)}`}
-          >
+          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {scoreLabel}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Based on {pillarScores.scoredPillarCount ?? 0} of{" "}
-            {pillarScores.totalPillarCount ?? 8} pillars with sufficient data
+          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+            {pillarScores.scoredPillarCount ?? 0} of{" "}
+            {pillarScores.totalPillarCount ?? 8} pillars scored
           </p>
         </div>
       </div>
 
       {/* 2. Pillar score cards */}
-      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="mb-8 grid grid-cols-2 gap-px border border-gray-100 bg-gray-100 dark:border-gray-800 dark:bg-gray-800 sm:grid-cols-3 lg:grid-cols-6">
         {DISPLAY_PILLARS.map(({ id, label }) => (
           <PillarScoreCard
             key={id}
@@ -233,32 +254,29 @@ export function ReportView({
         ))}
       </div>
 
-      {/* 3. Summary counts */}
+      {/* 3. Summary */}
       {issues.length > 0 ? (
-        <div className="mb-6 space-y-3">
-          <p className="text-base font-semibold text-foreground">
+        <div className="mb-6 space-y-2">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             {counts.total} total issue{counts.total === 1 ? "" : "s"} found
-          </p>
-          <SummaryBadges counts={counts} />
+          </h2>
+          <SummaryCounts counts={counts} />
         </div>
       ) : null}
 
-      {/* 4. Issues grouped by pillar */}
+      {/* 4. Issues */}
       {issues.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center py-16 text-center">
-            <ShieldCheck className="size-12 text-green-600" />
-            <h2 className="mt-4 text-xl font-semibold text-foreground">
-              Great news! No issues found.
-            </h2>
-            <p className="mt-2 max-w-md text-muted-foreground">
-              Your app looks production ready! No security or DevOps issues were
-              detected.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="border border-gray-100 bg-white px-6 py-16 text-center dark:border-gray-800 dark:bg-gray-900/20">
+          <ShieldCheck className="mx-auto size-10 text-gray-400" />
+          <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
+            No issues found
+          </h2>
+          <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+            Your app looks production ready based on this scan.
+          </p>
+        </div>
       ) : (
-        <div className="space-y-3">
+        <>
           <FixProgressTracker
             fixedCount={fixedIssueIds.length}
             totalCount={issues.length}
@@ -266,29 +284,34 @@ export function ReportView({
             onRescanClick={handleRescanClick}
           />
 
-          {ALL_PILLARS.map(({ id, label }) => (
-            <PillarIssueGroup
-              key={id}
-              pillarId={id}
-              label={label}
-              issues={grouped[id]}
-              pillarScores={pillarScores}
-              tool={tool}
-              discoveryResponse={discoveryResponse}
-              fixedIssueIds={fixedIssueIds}
-              isOpen={expandedPillars.has(id)}
-              onToggle={() => togglePillar(id)}
-              onToggleFixed={handleToggleFixed}
-            />
-          ))}
-        </div>
+          <div className="border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/20">
+            {ALL_PILLARS.map(({ id, label }) => (
+              <PillarIssueGroup
+                key={id}
+                pillarId={id}
+                label={label}
+                issues={grouped[id]}
+                pillarScores={pillarScores}
+                tool={tool}
+                discoveryResponse={discoveryResponse}
+                fixedIssueIds={fixedIssueIds}
+                isOpen={expandedPillars.has(id)}
+                onToggle={() => togglePillar(id)}
+                onToggleFixed={handleToggleFixed}
+              />
+            ))}
+          </div>
+        </>
       )}
 
-      {/* Footer actions */}
-      <div className="mt-12 rounded-xl border border-border bg-muted/30 p-6">
-        <div className="flex flex-col gap-3 sm:flex-row">
+      {/* Footer */}
+      <div className="mt-10 border-t border-gray-100 pt-6 dark:border-gray-800">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <Link href={rescanHref} onClick={handleRescanClick}>
-            <Button variant="outline" className="w-full gap-2 sm:w-auto">
+            <Button
+              variant="outline"
+              className="w-full gap-2 border-gray-200 bg-transparent text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900 sm:w-auto"
+            >
               <RefreshCw className="size-4" />
               Rescan
             </Button>
@@ -296,28 +319,24 @@ export function ReportView({
           <Button
             type="button"
             variant="outline"
-            className="gap-2"
+            className="gap-2 border-gray-200 bg-transparent text-gray-600 hover:bg-gray-50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-900"
             onClick={handleShare}
           >
             <Share2 className="size-4" />
-            Share Report
+            Share report
           </Button>
           <Button
             type="button"
             variant="ghost"
+            className="text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
             onClick={() => router.push("/dashboard")}
           >
-            Back to Dashboard
+            Back to dashboard
           </Button>
         </div>
-      </div>
-
-      <div className="mt-6 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-xs leading-relaxed text-muted-foreground">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        <p>
-          ShipProof analyzes up to 15 files from your repository. Pillars marked
-          ⚠️ had limited data. Results may vary slightly between scans — apply fix
-          prompts before rescanning for best results.
+        <p className="mt-4 text-xs leading-relaxed text-gray-400 dark:text-gray-500">
+          ShipProof analyzes up to 15 files from your repository. Apply fix prompts
+          before rescanning for best results.
         </p>
       </div>
     </div>

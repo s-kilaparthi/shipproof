@@ -40,7 +40,7 @@ function StepIndicator({
   const currentIndex = displaySteps.findIndex((s) => s.id === currentStepId);
 
   return (
-    <div className="mb-8">
+    <div className="mb-4">
       <div className="flex flex-col gap-3 sm:hidden">
         <p className="text-sm text-muted-foreground">
           Step {Math.max(1, currentIndex + 1)} of {displaySteps.length}
@@ -382,6 +382,11 @@ function ScanWizardContent() {
   };
 
   const handleStartScan = async () => {
+    if (!formState.appStage) {
+      toast.error("Please select how live your app is");
+      setCurrentStepId("app-stage");
+      return;
+    }
     await runScan(formState);
   };
 
@@ -393,18 +398,18 @@ function ScanWizardContent() {
     <>
       <ScanLoading isActive={isAnalyzing} />
 
-      <div>
+      <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <StepIndicator steps={wizardSteps} currentStepId={stepIndicatorId} />
 
         {discoveryLoading && formState.selectedRepo && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+          <div className="mb-3 flex shrink-0 items-center gap-2 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             Checking previous scans for this repo...
           </div>
         )}
 
-        <div className="relative overflow-hidden">
-          <div key={currentStepId} className="transition-all duration-300 ease-out">
+        <div className="min-h-0 flex-1">
+          <div key={currentStepId} className="h-full transition-all duration-300 ease-out">
             {currentStepId === "repo" && (
               <RepoSelector
                 selectedRepo={formState.selectedRepo}
@@ -457,10 +462,6 @@ function ScanWizardContent() {
                 selectedStage={formState.appStage}
                 onSelect={handleAppStageSelect}
                 onNext={() => setCurrentStepId("discovery")}
-                onSkip={() => {
-                  setFormState((prev) => ({ ...prev, appStage: null }));
-                  setCurrentStepId("discovery");
-                }}
                 onBack={() => setCurrentStepId("tool")}
               />
             )}
@@ -486,15 +487,17 @@ function ScanWizardContent() {
 
 export function ScanWizard() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
-          <Loader2 className="size-5 animate-spin" />
-          Loading scan wizard...
-        </div>
-      }
-    >
-      <ScanWizardContent />
-    </Suspense>
+    <div className="h-full min-h-0">
+      <Suspense
+        fallback={
+          <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground">
+            <Loader2 className="size-5 animate-spin" />
+            Loading scan wizard...
+          </div>
+        }
+      >
+        <ScanWizardContent />
+      </Suspense>
+    </div>
   );
 }

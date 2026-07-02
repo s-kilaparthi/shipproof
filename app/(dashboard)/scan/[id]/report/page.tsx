@@ -108,16 +108,17 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     : undefined;
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
-      <Link
-        href="/dashboard"
-        className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-      >
-        <ArrowLeft className="size-4" />
-        Back to Dashboard
-      </Link>
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-12">
+        <Link
+          href="/dashboard"
+          className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+        >
+          <ArrowLeft className="size-4" />
+          Back to Dashboard
+        </Link>
 
-      <ReportView
+        <ReportView
         scanId={scan.id}
         repoName={scan.repo_name}
         tool={scan.tool_selected as Tool}
@@ -130,7 +131,8 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         isQuickRescan={quickRescan}
         discoveryAgeLabel={discoveryAgeLabel}
         canQuickRescan={canQuickRescan}
-      />
+        />
+      </div>
     </main>
   );
 }
