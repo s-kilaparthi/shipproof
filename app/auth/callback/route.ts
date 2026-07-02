@@ -2,16 +2,36 @@ import { createServerClient } from "@supabase/auth-helpers-nextjs";
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+const ALLOWED_NEXT_PATHS = ["/dashboard", "/scan"];
+
+function getRedirectOrigin(request: Request): string {
+  const fromEnv =
+    process.env.NEXT_PUBLIC_SITE_URL?.trim() ||
+    process.env.NEXTAUTH_URL?.trim();
+
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+
+  return new URL(request.url).origin;
+}
+
+function resolveNextPath(rawNext: string | null): string {
+  const candidate = rawNext?.trim() || "/dashboard";
+
+  const isAllowed = ALLOWED_NEXT_PATHS.some(
+    (allowed) => candidate === allowed || candidate.startsWith(`${allowed}/`)
+  );
+
+  return isAllowed ? candidate : "/dashboard";
+}
+
 export async function GET(request: Request) {
-  const { searchParams, origin } = new URL(request.url);
+  const { searchParams } = new URL(request.url);
+  const origin = getRedirectOrigin(request);
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/dashboard";
-  const ALLOWED_NEXT_PATHS = ["/dashboard", "/scan"];
-  const next = ALLOWED_NEXT_PATHS.some(
-    (allowed) => rawNext === allowed || rawNext.startsWith(allowed + "/")
-  )
-    ? rawNext
-    : "/dashboard";
+  // Allowlist validation for ?next= (defaults to /dashboard if invalid or absent).
+  resolveNextPath(searchParams.get("next"));
 
   if (code) {
     const cookieStore = cookies();
@@ -35,7 +55,7 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      return NextResponse.redirect(`${origin}/dashboard`);
     }
   }
 
