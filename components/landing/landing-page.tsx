@@ -4,14 +4,18 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   Check,
+  CheckCircle,
   Copy,
   Eye,
   GitBranch,
+  Heart,
   Lock,
   Search,
   Server,
   Shield,
+  ShieldCheck,
   ShieldX,
+  Target,
   Trash2,
   Zap,
   type LucideIcon,
@@ -23,11 +27,11 @@ import { FadeIn, HeroFadeIn } from "@/components/landing/motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-const TRUST_ITEMS = [
-  "🔒 We never store your code",
-  "⚡ Scan in under 2 minutes",
-  "🎯 Copy-paste fix prompts",
-  "✅ Free to start",
+const TRUST_ITEMS: { icon: LucideIcon; text: string }[] = [
+  { icon: Lock, text: "We never store your code" },
+  { icon: Zap, text: "Scan in under 2 minutes" },
+  { icon: Target, text: "Copy-paste fix prompts" },
+  { icon: CheckCircle, text: "Free to start" },
 ];
 
 const PROBLEM_CARDS = [
@@ -239,12 +243,20 @@ export function LandingPage() {
       <section className="bg-background px-4 pb-24 pt-32 sm:px-6 sm:pb-32 sm:pt-40">
         <div className="mx-auto max-w-4xl text-center">
           <HeroFadeIn>
-            <span className="inline-flex items-center gap-2 rounded-full border border-card-border bg-muted-background px-4 py-1.5 text-sm text-muted-foreground">
-              🚀 Built for the vibe coding generation
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-400">
+              <Shield className="size-3" />
+              Built for the vibe coding generation
             </span>
           </HeroFadeIn>
 
-          <HeroFadeIn delay={0.1}>
+          <HeroFadeIn delay={0.05}>
+            <div className="mt-6 flex items-center justify-center gap-2 font-semibold tracking-tight text-foreground">
+              <ShieldCheck className="size-10" />
+              <span className="text-3xl">ShipProof</span>
+            </div>
+          </HeroFadeIn>
+
+          <HeroFadeIn delay={0.2}>
             <h1 className="mt-8 text-5xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-6xl">
               You build it.
               <br />
@@ -254,7 +266,7 @@ export function LandingPage() {
             </h1>
           </HeroFadeIn>
 
-          <HeroFadeIn delay={0.2}>
+          <HeroFadeIn delay={0.3}>
             <p className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-muted-foreground sm:text-xl">
               ShipProof scans your vibe-coded app for security vulnerabilities,
               performance issues, and DevOps gaps — then gives you copy-paste fix
@@ -262,7 +274,7 @@ export function LandingPage() {
             </p>
           </HeroFadeIn>
 
-          <HeroFadeIn delay={0.3}>
+          <HeroFadeIn delay={0.4}>
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/login">
                 <Button size="lg" className="h-12 w-full min-w-[200px] px-8 text-base sm:w-auto">
@@ -281,10 +293,13 @@ export function LandingPage() {
             </div>
           </HeroFadeIn>
 
-          <HeroFadeIn delay={0.4}>
-            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground">
-              {TRUST_ITEMS.map((item) => (
-                <span key={item}>{item}</span>
+          <HeroFadeIn delay={0.5}>
+            <div className="mt-12 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-sm text-gray-500 dark:text-gray-400">
+              {TRUST_ITEMS.map(({ icon: Icon, text }) => (
+                <span key={text} className="inline-flex items-center gap-1.5">
+                  <Icon className="size-4" />
+                  {text}
+                </span>
               ))}
             </div>
           </HeroFadeIn>
@@ -381,7 +396,7 @@ export function LandingPage() {
                     key={item}
                     className="flex items-start gap-3 text-sm text-muted-foreground"
                   >
-                    <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-gray-900 dark:text-white" />
                     {item}
                   </li>
                 ))}
@@ -392,7 +407,7 @@ export function LandingPage() {
                     key={item}
                     className="flex items-start gap-3 text-sm text-muted-foreground"
                   >
-                    <Check className="mt-0.5 size-4 shrink-0 text-foreground" />
+                    <Check className="mt-0.5 size-4 shrink-0 text-gray-900 dark:text-white" />
                     {item}
                   </li>
                 ))}
@@ -672,7 +687,10 @@ export function LandingPage() {
         <div className="mx-auto max-w-6xl">
           <div className="flex flex-col gap-8 md:flex-row md:items-start md:justify-between">
             <div>
-              <p className="text-lg font-bold text-foreground">⚡ ShipProof</p>
+              <p className="flex items-center gap-2 text-lg font-bold text-foreground">
+                <ShieldCheck className="size-6" />
+                ShipProof
+              </p>
               <p className="mt-1 text-sm text-muted-foreground">
                 You build it. We make sure it runs.
               </p>
@@ -691,8 +709,9 @@ export function LandingPage() {
                 Contact
               </a>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Built with ❤️ for the vibe coding generation
+            <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <Heart className="size-4" />
+              Built for the vibe coding generation
             </p>
           </div>
           <p className="mt-8 border-t border-card-border pt-8 text-center text-xs text-muted-foreground">
