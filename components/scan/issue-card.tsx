@@ -87,15 +87,72 @@ async function copyText(text: string, successMessage: string) {
   toast.success(successMessage);
 }
 
-function UncertainFixNotice() {
+function UncertainFixBanner({ tool }: { tool: Tool }) {
   return (
-    <div className="mb-2 rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-      <p className="font-medium">⚠️ Verify before applying</p>
-      <p className="mt-0.5">
-        This fix may behave differently depending on your exact setup. We
-        recommend pasting this into your AI tool rather than applying manually.
-      </p>
+    <div className="mb-3 flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+      <span className="shrink-0" aria-hidden>
+        ⚠️
+      </span>
+      <div>
+        <p className="font-medium">
+          We recommend letting {tool} figure out the fix
+        </p>
+        <p className="mt-0.5">
+          This fix may behave differently depending on your exact setup. Using
+          your AI tool is safer than applying the fix prompt directly.
+        </p>
+      </div>
     </div>
+  );
+}
+
+function PrimaryCopyButton({
+  onClick,
+  copied,
+  tool,
+}: {
+  onClick: () => void;
+  copied: boolean;
+  tool: Tool;
+}) {
+  return (
+    <button
+      type="button"
+      className="mt-2 inline-flex items-center gap-1.5 rounded bg-black px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-90 dark:bg-white dark:text-black"
+      onClick={onClick}
+    >
+      {copied ? (
+        <>
+          <Check className="size-3" />
+          Copied
+        </>
+      ) : (
+        <>
+          <Copy className="size-3" />
+          Copy prompt for {tool}
+        </>
+      )}
+    </button>
+  );
+}
+
+function SecondaryCopyButton({
+  onClick,
+  copied,
+  label = "Copy fix prompt",
+}: {
+  onClick: () => void;
+  copied: boolean;
+  label?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+      onClick={onClick}
+    >
+      {copied ? "Copied" : label}
+    </button>
   );
 }
 
@@ -182,21 +239,27 @@ export function IssueCard({
   const [copiedStepCommands, setCopiedStepCommands] = useState<
     Record<number, boolean>
   >({});
+  const [secondaryFixExpanded, setSecondaryFixExpanded] = useState(false);
 
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
   const isUncertainFix = issue.fix_confidence === "uncertain";
+  const askToolPrompt = buildAskToolPrompt(issue, stackSummary);
   const severityKey = issue.severity.toLowerCase();
 
   useEffect(() => {
-    if (isFixed) setFixExpanded(false);
+    if (isFixed) {
+      setFixExpanded(false);
+      setSecondaryFixExpanded(false);
+    }
   }, [isFixed]);
 
   useEffect(() => {
     if (isSkipped) {
       setShowSkipMenu(false);
       setFixExpanded(false);
+      setSecondaryFixExpanded(false);
     }
   }, [isSkipped]);
 
@@ -218,6 +281,289 @@ export function IssueCard({
     onSkip?.(selectedSkipReason);
     setShowSkipMenu(false);
   };
+
+  const renderCertainFixContent = () => {
+    if (isMultiStep) {
+      return (
+        <>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {getMultiStepIntro(
+              steps.map((step) => resolveFixType(issue, step)),
+              tool
+            )}
+          </p>
+          {steps.map((step) => {
+            const stepFixType = resolveFixType(issue, step);
+            const stepTerminal = stepFixType === "terminal";
+            const stepParsed = stepTerminal
+              ? extractTerminalCommand(step.instruction)
+              : null;
+
+            return (
+              <div
+                key={step.stepNumber}
+                className="border-t border-gray-100 pt-3 dark:border-gray-800"
+              >
+                <p className="mb-2 text-xs text-gray-500">
+                  Step {step.stepNumber} ·{" "}
+                  <span className="font-mono">{step.filePath}</span>
+                </p>
+                {stepTerminal && stepParsed?.command ? (
+                  <TerminalFixDisplay
+                    fixPrompt={step.instruction}
+                    copied={!!copiedStepCommands[step.stepNumber]}
+                    onCopyCommand={(command) =>
+                      handleCopy(
+                        command,
+                        "Command copied",
+                        (v) =>
+                          setCopiedStepCommands((prev) => ({
+                            ...prev,
+                            [step.stepNumber]: v,
+                          }))
+                      )
+                    }
+                  />
+                ) : (
+                  <>
+                    <pre className={CODE_BLOCK}>{step.instruction}</pre>
+                    <div className="mt-2">
+                      <CopyButton
+                        onClick={() =>
+                          handleCopy(
+                            formatStepText(step),
+                            "Copied to clipboard",
+                            (v) =>
+                              setCopiedSteps((prev) => ({
+                                ...prev,
+                                [step.stepNumber]: v,
+                              }))
+                          )
+                        }
+                        copied={!!copiedSteps[step.stepNumber]}
+                        label={getCopyButtonLabel(stepFixType, tool)}
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+          <CopyButton
+            onClick={() =>
+              handleCopy(formatAllSteps(steps), "All steps copied", setCopiedAll)
+            }
+            copied={copiedAll}
+            label="Copy all steps"
+          />
+        </>
+      );
+    }
+
+    if (singleFixType === "sql") {
+      return <SqlFixDisplay issue={issue} tool={tool} />;
+    }
+
+    if (
+      singleFixType === "terminal" &&
+      extractTerminalCommand(issue.fix_prompt).command
+    ) {
+      return (
+        <TerminalFixDisplay
+          fixPrompt={issue.fix_prompt}
+          copied={copiedCommand}
+          onCopyCommand={(command) =>
+            handleCopy(command, "Command copied", setCopiedCommand)
+          }
+        />
+      );
+    }
+
+    return (
+      <>
+        <pre className={CODE_BLOCK}>{issue.fix_prompt}</pre>
+        <CopyButton
+          onClick={() =>
+            handleCopy(
+              issue.fix_prompt,
+              `${getCopyButtonLabel(singleFixType, tool)} copied`,
+              setCopiedSingle
+            )
+          }
+          copied={copiedSingle}
+          label={getCopyButtonLabel(singleFixType, tool)}
+        />
+      </>
+    );
+  };
+
+  const renderSecondaryFixContent = () => {
+    if (isMultiStep) {
+      return (
+        <div className="space-y-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            {getMultiStepIntro(
+              steps.map((step) => resolveFixType(issue, step)),
+              tool
+            )}
+          </p>
+          {steps.map((step) => {
+            const stepFixType = resolveFixType(issue, step);
+            const stepTerminal = stepFixType === "terminal";
+            const stepParsed = stepTerminal
+              ? extractTerminalCommand(step.instruction)
+              : null;
+            const stepCommand = stepParsed?.command ?? null;
+
+            return (
+              <div
+                key={step.stepNumber}
+                className="border-t border-gray-100 pt-3 dark:border-gray-800"
+              >
+                <p className="mb-2 text-xs text-gray-500">
+                  Step {step.stepNumber} ·{" "}
+                  <span className="font-mono">{step.filePath}</span>
+                </p>
+                {stepTerminal && stepCommand ? (
+                  <>
+                    <pre className={CODE_BLOCK}>{stepCommand}</pre>
+                    <div className="mt-2">
+                      <SecondaryCopyButton
+                        onClick={() =>
+                          handleCopy(
+                            stepCommand,
+                            "Command copied",
+                            (v) =>
+                              setCopiedStepCommands((prev) => ({
+                                ...prev,
+                                [step.stepNumber]: v,
+                              }))
+                          )
+                        }
+                        copied={!!copiedStepCommands[step.stepNumber]}
+                        label="Copy command"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <pre className={CODE_BLOCK}>{step.instruction}</pre>
+                    <div className="mt-2">
+                      <SecondaryCopyButton
+                        onClick={() =>
+                          handleCopy(
+                            formatStepText(step),
+                            "Copied to clipboard",
+                            (v) =>
+                              setCopiedSteps((prev) => ({
+                                ...prev,
+                                [step.stepNumber]: v,
+                              }))
+                          )
+                        }
+                        copied={!!copiedSteps[step.stepNumber]}
+                        label="Copy fix prompt"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+            );
+          })}
+          <SecondaryCopyButton
+            onClick={() =>
+              handleCopy(formatAllSteps(steps), "All steps copied", setCopiedAll)
+            }
+            copied={copiedAll}
+            label="Copy all steps"
+          />
+        </div>
+      );
+    }
+
+    if (singleFixType === "sql") {
+      return <SqlFixDisplay issue={issue} tool={tool} />;
+    }
+
+    if (
+      singleFixType === "terminal" &&
+      extractTerminalCommand(issue.fix_prompt).command
+    ) {
+      const { command } = extractTerminalCommand(issue.fix_prompt);
+      return (
+        <>
+          <pre className={CODE_BLOCK}>{command ?? issue.fix_prompt}</pre>
+          {command ? (
+            <div className="mt-2">
+              <SecondaryCopyButton
+                onClick={() =>
+                  handleCopy(command, "Command copied", setCopiedCommand)
+                }
+                copied={copiedCommand}
+                label="Copy command"
+              />
+            </div>
+          ) : null}
+        </>
+      );
+    }
+
+    return (
+      <>
+        <pre className={CODE_BLOCK}>{issue.fix_prompt}</pre>
+        <div className="mt-2">
+          <SecondaryCopyButton
+            onClick={() =>
+              handleCopy(issue.fix_prompt, "Fix prompt copied", setCopiedSingle)
+            }
+            copied={copiedSingle}
+          />
+        </div>
+      </>
+    );
+  };
+
+  const renderUncertainFixContent = () => (
+    <>
+      <UncertainFixBanner tool={tool} />
+
+      <div>
+        <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
+          Paste this into {tool}:
+        </p>
+        <pre className="mt-2 max-h-64 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
+          {askToolPrompt}
+        </pre>
+        <PrimaryCopyButton
+          tool={tool}
+          copied={copiedAskTool}
+          onClick={() =>
+            handleCopy(
+              askToolPrompt,
+              `Prompt copied for ${tool}`,
+              setCopiedAskTool
+            )
+          }
+        />
+      </div>
+
+      <div className="border-t border-gray-100 pt-3 dark:border-gray-800">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          Or if you know what you&apos;re doing:
+        </p>
+        <button
+          type="button"
+          className="mt-1 text-xs text-gray-400 underline-offset-2 hover:underline"
+          onClick={() => setSecondaryFixExpanded((open) => !open)}
+        >
+          {secondaryFixExpanded ? "Hide fix prompt ↑" : "Show fix prompt ▼"}
+        </button>
+        {secondaryFixExpanded ? (
+          <div className="mt-3">{renderSecondaryFixContent()}</div>
+        ) : null}
+      </div>
+    </>
+  );
 
   if (isSkipped && !cardExpanded) {
     return (
@@ -338,145 +684,9 @@ export function IssueCard({
 
           {fixExpanded ? (
             <div className="mt-3 space-y-4">
-              {isUncertainFix ? <UncertainFixNotice /> : null}
-              {isMultiStep ? (
-                <>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    {getMultiStepIntro(
-                      steps.map((step) => resolveFixType(issue, step)),
-                      tool
-                    )}
-                  </p>
-                  {steps.map((step) => {
-                    const stepFixType = resolveFixType(issue, step);
-                    const stepTerminal = stepFixType === "terminal";
-                    const stepParsed = stepTerminal
-                      ? extractTerminalCommand(step.instruction)
-                      : null;
-
-                    return (
-                      <div
-                        key={step.stepNumber}
-                        className="border-t border-gray-100 pt-3 dark:border-gray-800"
-                      >
-                        <p className="mb-2 text-xs text-gray-500">
-                          Step {step.stepNumber} ·{" "}
-                          <span className="font-mono">{step.filePath}</span>
-                        </p>
-                        {stepTerminal && stepParsed?.command ? (
-                          <TerminalFixDisplay
-                            fixPrompt={step.instruction}
-                            copied={!!copiedStepCommands[step.stepNumber]}
-                            onCopyCommand={(command) =>
-                              handleCopy(
-                                command,
-                                "Command copied",
-                                (v) =>
-                                  setCopiedStepCommands((prev) => ({
-                                    ...prev,
-                                    [step.stepNumber]: v,
-                                  }))
-                              )
-                            }
-                          />
-                        ) : (
-                          <>
-                            <pre className={CODE_BLOCK}>{step.instruction}</pre>
-                            <div className="mt-2">
-                              <CopyButton
-                                onClick={() =>
-                                  handleCopy(
-                                    formatStepText(step),
-                                    "Copied to clipboard",
-                                    (v) =>
-                                      setCopiedSteps((prev) => ({
-                                        ...prev,
-                                        [step.stepNumber]: v,
-                                      }))
-                                  )
-                                }
-                                copied={!!copiedSteps[step.stepNumber]}
-                                label={getCopyButtonLabel(stepFixType, tool)}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    );
-                  })}
-                  <CopyButton
-                    onClick={() =>
-                      handleCopy(formatAllSteps(steps), "All steps copied", setCopiedAll)
-                    }
-                    copied={copiedAll}
-                    label="Copy all steps"
-                  />
-                  {isUncertainFix ? (
-                    <div className="space-y-2 border-t border-gray-100 pt-3 dark:border-gray-800">
-                      <CopyButton
-                        onClick={() =>
-                          handleCopy(
-                            buildAskToolPrompt(issue, stackSummary),
-                            `Prompt copied for ${tool}`,
-                            setCopiedAskTool
-                          )
-                        }
-                        copied={copiedAskTool}
-                        label={`Ask ${tool} to fix this`}
-                      />
-                    </div>
-                  ) : null}
-                </>
-              ) : singleFixType === "sql" ? (
-                <SqlFixDisplay issue={issue} tool={tool} />
-              ) : singleFixType === "terminal" &&
-                extractTerminalCommand(issue.fix_prompt).command ? (
-                <TerminalFixDisplay
-                  fixPrompt={issue.fix_prompt}
-                  copied={copiedCommand}
-                  onCopyCommand={(command) =>
-                    handleCopy(command, "Command copied", setCopiedCommand)
-                  }
-                />
-              ) : (
-                <>
-                  <pre className={CODE_BLOCK}>{issue.fix_prompt}</pre>
-                  {isUncertainFix ? (
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <CopyButton
-                        onClick={() =>
-                          handleCopy(issue.fix_prompt, "Fix prompt copied", setCopiedSingle)
-                        }
-                        copied={copiedSingle}
-                        label="Copy fix prompt"
-                      />
-                      <CopyButton
-                        onClick={() =>
-                          handleCopy(
-                            buildAskToolPrompt(issue, stackSummary),
-                            `Prompt copied for ${tool}`,
-                            setCopiedAskTool
-                          )
-                        }
-                        copied={copiedAskTool}
-                        label={`Ask ${tool} to fix this`}
-                      />
-                    </div>
-                  ) : (
-                    <CopyButton
-                      onClick={() =>
-                        handleCopy(
-                          issue.fix_prompt,
-                          `${getCopyButtonLabel(singleFixType, tool)} copied`,
-                          setCopiedSingle
-                        )
-                      }
-                      copied={copiedSingle}
-                      label={getCopyButtonLabel(singleFixType, tool)}
-                    />
-                  )}
-                </>
-              )}
+              {isUncertainFix
+                ? renderUncertainFixContent()
+                : renderCertainFixContent()}
             </div>
           ) : null}
         </div>
