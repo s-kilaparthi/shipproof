@@ -19,7 +19,7 @@ export function FixProgressTracker({
   const allFixed = totalCount > 0 && fixedCount >= totalCount;
 
   return (
-    <div className="mb-6 space-y-3 border border-gray-100 bg-gray-50 px-4 py-4 dark:border-gray-800 dark:bg-gray-900/50 sm:px-5">
+    <div className="mb-6 space-y-3 rounded-xl border border-gray-100 px-4 py-4 dark:border-gray-800 sm:px-5">
       <div>
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
           Fix progress

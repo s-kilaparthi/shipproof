@@ -47,7 +47,7 @@ export function PillarScoreCard({
       type="button"
       onClick={onClick}
       title={tooltip}
-      className="border border-gray-100 bg-transparent p-3 text-left transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/50 sm:p-4"
+      className="border border-gray-100 bg-transparent p-3 text-left transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/30 sm:p-4"
     >
       <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
         {label}

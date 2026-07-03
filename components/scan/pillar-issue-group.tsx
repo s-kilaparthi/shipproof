@@ -35,9 +35,9 @@ function SeverityCounts({
   if (counts.total === 0) return null;
 
   const items = [
-    counts.critical > 0 && { dot: "bg-red-400", count: counts.critical },
-    counts.warning > 0 && { dot: "bg-amber-400", count: counts.warning },
-    counts.info > 0 && { dot: "bg-gray-400", count: counts.info },
+    counts.critical > 0 && { dot: "bg-red-500", count: counts.critical },
+    counts.warning > 0 && { dot: "bg-amber-500", count: counts.warning },
+    counts.info > 0 && { dot: "bg-gray-500", count: counts.info },
   ].filter(Boolean) as { dot: string; count: number }[];
 
   return (
@@ -45,7 +45,7 @@ function SeverityCounts({
       {items.map(({ dot, count }, index) => (
         <span
           key={index}
-          className="inline-flex items-center gap-1 text-xs text-gray-500"
+          className="inline-flex items-center gap-1 text-xs text-gray-400"
         >
           <span className={cn("size-1.5 rounded-full", dot)} />
           {count}
@@ -71,7 +71,7 @@ function PillarScoreLabel({
     detail.confidence === "medium";
 
   return (
-    <span className="flex shrink-0 items-center gap-1.5 text-sm text-gray-500">
+    <span className="flex shrink-0 items-center gap-1.5 text-xs text-gray-400">
       Score: {displayScore}
       {showInfo ? (
         <span title={tooltip} className="inline-flex">
@@ -103,7 +103,7 @@ export function PillarIssueGroup({
     return (
       <div
         id={`pillar-${pillarId}`}
-        className="scroll-mt-24 flex flex-col gap-2 border-b border-gray-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800"
+        className="scroll-mt-24 flex flex-col gap-2 border-b border-gray-100 py-3 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800"
       >
         <div className="flex items-center gap-2">
           <span className="text-sm font-semibold text-gray-400 dark:text-gray-500">
@@ -117,11 +117,14 @@ export function PillarIssueGroup({
   }
 
   return (
-    <section id={`pillar-${pillarId}`} className="scroll-mt-24 border-b border-gray-100 dark:border-gray-800">
+    <section
+      id={`pillar-${pillarId}`}
+      className="scroll-mt-24 border-b border-gray-100 dark:border-gray-800"
+    >
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full cursor-pointer flex-col gap-2 px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/50 sm:flex-row sm:items-center sm:justify-between"
+        className="flex w-full cursor-pointer flex-col gap-2 py-3 text-left sm:flex-row sm:items-center sm:justify-between"
       >
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <ChevronDown
@@ -145,7 +148,7 @@ export function PillarIssueGroup({
         )}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-gray-100 bg-white dark:border-gray-800 dark:bg-transparent">
+          <div className="space-y-3 pb-4 pl-4">
             {activeIssues.map((issue) => (
               <IssueCard
                 key={issue.id}

@@ -16,7 +16,14 @@ import {
   type SkipReason,
 } from "@/lib/scan/skipped-issues";
 import { cn } from "@/lib/utils";
-import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
+import {
+  ALL_PILLARS,
+  type Confidence,
+  type FixStep,
+  type FixType,
+  type ScanIssueRow,
+  type Tool,
+} from "@/types";
 
 interface IssueCardProps {
   issue: ScanIssueRow;
@@ -30,16 +37,23 @@ interface IssueCardProps {
   collapsedByDefault?: boolean;
 }
 
+const CARD_CLASS =
+  "rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900";
+
 const CODE_BLOCK =
-  "max-h-64 overflow-x-auto border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900";
+  "max-h-64 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-950";
 
 const COPY_BTN =
-  "inline-flex items-center gap-1.5 border border-gray-200 bg-transparent px-2.5 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800";
+  "inline-flex items-center gap-1.5 rounded border border-gray-200 bg-transparent px-2.5 py-1 text-xs text-gray-500 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800";
 
-const TOGGLE_BTN =
-  "text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300";
+const FIX_PROMPT_BTN =
+  "rounded border border-gray-200 px-3 py-1.5 text-xs text-gray-700 transition-colors hover:bg-gray-50 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-800";
 
 const SKIP_REASONS: SkipReason[] = ["break", "not_relevant", "later"];
+
+const PILLAR_LABELS = Object.fromEntries(
+  ALL_PILLARS.map(({ id, label }) => [id, label])
+) as Record<string, string>;
 
 function buildStackSummary(tool?: Tool | null): string {
   return tool ? `Built with ${tool}` : "Stack unknown";
@@ -52,30 +66,30 @@ ${buildStackSummary(tool)}
 Please fix this issue in my codebase without breaking my existing setup.`;
 }
 
-function confidenceInline(confidence?: Confidence): string {
-  if (confidence === "high") return "high confidence";
-  if (confidence === "low") return "low confidence";
-  return "medium confidence";
+function confidenceTooltip(confidence?: Confidence): string {
+  if (confidence === "high") return "High confidence — based on clear code evidence";
+  if (confidence === "low") return "Low confidence — inferred from context";
+  return "Medium confidence — based on file or function references";
 }
 
-function getSeverityBorder(severity: string): string {
+function formatSeverityLabel(severity: string): string {
   const s = severity.toLowerCase();
-  if (s === "critical") return "border-l-[3px] border-red-400";
-  if (s === "warning") return "border-l-[3px] border-amber-400";
-  return "border-l-[3px] border-gray-300 dark:border-gray-600";
+  if (s === "critical") return "Critical";
+  if (s === "warning") return "Warning";
+  return "Info";
 }
 
 function getSeverityDot(severity: string): string {
   const s = severity.toLowerCase();
-  if (s === "critical") return "bg-red-400";
-  if (s === "warning") return "bg-amber-400";
-  return "bg-gray-400";
+  if (s === "critical") return "bg-red-500";
+  if (s === "warning") return "bg-amber-500";
+  return "bg-gray-500";
 }
 
 function getSeverityText(severity: string): string {
   const s = severity.toLowerCase();
-  if (s === "critical") return "text-red-500 dark:text-red-400";
-  if (s === "warning") return "text-amber-600 dark:text-amber-400";
+  if (s === "critical") return "text-red-500";
+  if (s === "warning") return "text-amber-500";
   return "text-gray-400";
 }
 
@@ -246,7 +260,8 @@ export function IssueCard({
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
   const isUncertainFix = issue.fix_confidence === "uncertain";
-  const severityKey = issue.severity.toLowerCase();
+  const severityLabel = formatSeverityLabel(issue.severity);
+  const pillarLabel = PILLAR_LABELS[issue.pillar] ?? issue.pillar;
 
   useEffect(() => {
     if (isFixed) {
@@ -531,7 +546,7 @@ export function IssueCard({
         <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
           Paste this into {tool}:
         </p>
-        <pre className="mt-2 max-h-64 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
+        <pre className="mt-2 max-h-64 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-950">
           {askToolPrompt}
         </pre>
         <PrimaryCopyButton
@@ -567,17 +582,15 @@ export function IssueCard({
 
   if (isSkipped && !cardExpanded) {
     return (
-      <article className="border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-transparent">
+      <article className={cn(CARD_CLASS, "opacity-70")}>
         <button
           type="button"
           className="flex w-full items-center justify-between gap-3 text-left"
           onClick={() => setCardExpanded(true)}
         >
           <div className="min-w-0">
-            <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-              Skipped
-            </span>
-            <p className="mt-0.5 truncate text-sm text-gray-500 dark:text-gray-400">
+            <span className="text-xs text-gray-400">Skipped</span>
+            <p className="mt-1 truncate text-base font-semibold text-gray-500 dark:text-gray-400">
               {issue.issue_name}
             </p>
             {skipReason ? (
@@ -595,20 +608,17 @@ export function IssueCard({
   return (
     <article
       className={cn(
-        "border-b border-gray-100 bg-white px-4 py-4 dark:border-gray-800 dark:bg-transparent",
-        !isFixed && !isSkipped && getSeverityBorder(issue.severity),
-        isFixed && "border-l-[3px] border-gray-300 opacity-60 dark:border-gray-600",
-        isSkipped && "border-l-[3px] border-gray-300 opacity-70 dark:border-gray-600"
+        CARD_CLASS,
+        isFixed && "opacity-60",
+        isSkipped && "opacity-70"
       )}
     >
       {isSkipped ? (
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <span className="text-xs font-medium uppercase tracking-wide text-gray-400">
-            Skipped
-          </span>
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <span className="text-xs text-gray-400">Skipped</span>
           <button
             type="button"
-            className={TOGGLE_BTN}
+            className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             onClick={() => setCardExpanded(false)}
           >
             Collapse
@@ -616,35 +626,36 @@ export function IssueCard({
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+      <div
+        className="flex flex-wrap items-center gap-2"
+        title={confidenceTooltip(issue.confidence)}
+      >
         {!isSkipped ? (
-          <span
-            className={cn("size-2 shrink-0 rounded-full", getSeverityDot(issue.severity))}
-          />
-        ) : null}
-        <span
-          className={cn(
-            "text-xs font-medium uppercase tracking-wide",
-            isSkipped ? "text-gray-400" : getSeverityText(issue.severity)
-          )}
-        >
-          {isSkipped ? "skipped" : severityKey}
-        </span>
-        <span
-          className={cn(
-            "text-sm font-semibold text-gray-900 dark:text-gray-100",
-            isFixed && "text-gray-400 line-through dark:text-gray-500",
-            isSkipped && "text-gray-500 dark:text-gray-400"
-          )}
-        >
-          {issue.issue_name}
-        </span>
-        {!isSkipped ? (
-          <span className="text-xs text-gray-400 dark:text-gray-500">
-            · {confidenceInline(issue.confidence)}
-          </span>
-        ) : null}
+          <>
+            <span
+              className={cn("size-2 shrink-0 rounded-full", getSeverityDot(issue.severity))}
+            />
+            <span
+              className={cn("text-xs font-medium", getSeverityText(issue.severity))}
+            >
+              {severityLabel}
+            </span>
+            <span className="text-xs text-gray-400">·</span>
+            <span className="text-xs text-gray-400">{pillarLabel}</span>
+          </>
+        ) : (
+          <span className="text-xs text-gray-400">Skipped</span>
+        )}
       </div>
+
+      <h3
+        className={cn(
+          "mt-1 text-base font-semibold text-gray-900 dark:text-white",
+          isFixed && "text-gray-400 line-through dark:text-gray-500"
+        )}
+      >
+        {issue.issue_name}
+      </h3>
 
       {(issue.file_path || issue.line_number) && (
         <p className="mt-1 font-mono text-xs text-gray-400 dark:text-gray-500">
@@ -653,15 +664,15 @@ export function IssueCard({
         </p>
       )}
 
-      <p className="mt-2 text-sm font-normal text-gray-600 dark:text-gray-400">
+      <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {issue.description}
       </p>
 
       {issue.evidence ? (
-        <div className="mt-3">
+        <div className="mt-2">
           <button
             type="button"
-            className={TOGGLE_BTN}
+            className="text-xs text-gray-400 underline-offset-2 hover:underline"
             onClick={() => setEvidenceExpanded(!evidenceExpanded)}
           >
             {evidenceExpanded ? "Hide code evidence ↑" : "Show code evidence ↓"}
@@ -673,14 +684,31 @@ export function IssueCard({
       ) : null}
 
       {!isFixed && !isSkipped ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            className={TOGGLE_BTN}
-            onClick={() => setFixExpanded(!fixExpanded)}
-          >
-            {fixExpanded ? "Hide fix prompt ↑" : "Show fix prompt ↓"}
-          </button>
+        <>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              className={cn(
+                FIX_PROMPT_BTN,
+                fixExpanded && "bg-gray-50 dark:bg-gray-800"
+              )}
+              onClick={() => setFixExpanded(!fixExpanded)}
+            >
+              {fixExpanded ? "Hide fix prompt" : "Fix Prompt"}
+            </button>
+
+            {onToggleFixed ? (
+              <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                <input
+                  type="checkbox"
+                  checked={isFixed}
+                  onChange={onToggleFixed}
+                  className="size-3.5 rounded border-gray-300 dark:border-gray-600"
+                />
+                Mark as fixed
+              </label>
+            ) : null}
+          </div>
 
           {fixExpanded ? (
             <div className="mt-3 space-y-4">
@@ -689,33 +717,19 @@ export function IssueCard({
                 : renderCertainFixContent()}
             </div>
           ) : null}
-        </div>
-      ) : null}
 
-      {!isSkipped && onToggleFixed ? (
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <label className="inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-            <input
-              type="checkbox"
-              checked={isFixed}
-              onChange={onToggleFixed}
-              className="size-3.5 rounded border-gray-300 dark:border-gray-600"
-            />
-            {isFixed ? "Fixed" : "Mark as fixed"}
-          </label>
-
-          {onSkip && !isFixed ? (
-            <div className="relative">
+          {onSkip ? (
+            <div className="relative mt-3 flex justify-end">
               <button
                 type="button"
-                className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300"
+                className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => setShowSkipMenu((open) => !open)}
               >
-                Can&apos;t fix right now →
+                Can&apos;t fix right now
               </button>
 
               {showSkipMenu ? (
-                <div className="mt-2 rounded-lg border border-gray-200 bg-white p-3 shadow-sm dark:border-gray-700 dark:bg-gray-900">
+                <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     Why are you skipping this?
                   </p>
@@ -747,13 +761,25 @@ export function IssueCard({
               ) : null}
             </div>
           ) : null}
-        </div>
+        </>
+      ) : null}
+
+      {isFixed && onToggleFixed ? (
+        <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+          <input
+            type="checkbox"
+            checked={isFixed}
+            onChange={onToggleFixed}
+            className="size-3.5 rounded border-gray-300 dark:border-gray-600"
+          />
+          Fixed
+        </label>
       ) : null}
 
       {isSkipped && onUnskip ? (
         <button
           type="button"
-          className="mt-4 text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+          className="mt-3 text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600 dark:hover:text-gray-300"
           onClick={onUnskip}
         >
           Un-skip this issue

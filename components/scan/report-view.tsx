@@ -306,7 +306,7 @@ export function ReportView({
 
       {/* 4. Issues */}
       {issues.length === 0 ? (
-        <div className="border border-gray-100 bg-white px-6 py-16 text-center dark:border-gray-800 dark:bg-gray-900/20">
+        <div className="rounded-xl border border-gray-100 px-6 py-16 text-center dark:border-gray-800">
           <ShieldCheck className="mx-auto size-10 text-gray-400" />
           <h2 className="mt-4 text-lg font-semibold text-gray-900 dark:text-gray-100">
             No issues found
@@ -324,7 +324,7 @@ export function ReportView({
             onRescanClick={handleRescanClick}
           />
 
-          <div className="border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/20">
+          <div>
             {ALL_PILLARS.map(({ id, label }) => (
               <PillarIssueGroup
                 key={id}

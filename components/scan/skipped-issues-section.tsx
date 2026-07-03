@@ -28,11 +28,11 @@ export function SkippedIssuesSection({
   if (skippedIssuesList.length === 0) return null;
 
   return (
-    <section className="mt-6 border border-gray-100 bg-white dark:border-gray-800 dark:bg-gray-900/20">
+    <section className="mt-6 border-b border-gray-100 dark:border-gray-800">
       <button
         type="button"
         onClick={() => setIsOpen((open) => !open)}
-        className="flex w-full items-center justify-between px-4 py-3 text-left transition-colors hover:bg-gray-50 dark:hover:bg-gray-900/50"
+        className="flex w-full items-center justify-between py-3 text-left"
       >
         <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">
           Skipped issues ({skippedIssuesList.length})
@@ -52,7 +52,7 @@ export function SkippedIssuesSection({
         )}
       >
         <div className="overflow-hidden">
-          <div className="border-t border-gray-100 dark:border-gray-800">
+          <div className="space-y-3 pb-4 pl-4">
             {skippedIssuesList.map((issue) => (
               <IssueCard
                 key={issue.id}
