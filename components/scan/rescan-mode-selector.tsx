@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { RefreshCw, Zap } from "lucide-react";
+import { Check, RefreshCw, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -32,15 +32,6 @@ export function RescanModeSelector({
   const [selectedMode, setSelectedMode] = useState<RescanMode | null>(null);
   const discoveryAgeRounded = Math.floor(discoveryAgeDays);
 
-  const handleSelect = (mode: RescanMode) => {
-    setSelectedMode(mode);
-    if (mode === "quick") {
-      onQuickRescan();
-    } else {
-      onFullRescan();
-    }
-  };
-
   const modes: {
     id: RescanMode;
     title: string;
@@ -60,6 +51,16 @@ export function RescanModeSelector({
       icon: RefreshCw,
     },
   ];
+
+  const handleStartScan = () => {
+    if (!selectedMode || isSubmitting) return;
+
+    if (selectedMode === "quick") {
+      onQuickRescan();
+    } else {
+      onFullRescan();
+    }
+  };
 
   return (
     <Card className="shadow-none">
@@ -84,50 +85,54 @@ export function RescanModeSelector({
             const isSelected = selectedMode === mode.id;
 
             return (
-              <div
+              <button
                 key={mode.id}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => setSelectedMode(mode.id)}
                 className={cn(
-                  "flex min-h-36 flex-1 flex-col rounded-xl p-6 transition-colors",
+                  "relative flex min-h-36 flex-1 cursor-pointer flex-col items-start rounded-xl p-6 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50",
                   isSelected
                     ? "border-2 border-gray-900 bg-gray-50 dark:border-white dark:bg-gray-800"
-                    : "border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"
+                    : "border border-gray-200 bg-white hover:border-gray-400 dark:border-gray-700 dark:bg-gray-900 dark:hover:border-gray-500"
                 )}
               >
-                <button
-                  type="button"
-                  disabled={isSubmitting}
-                  onClick={() => setSelectedMode(mode.id)}
-                  className="flex flex-1 flex-col items-start text-left disabled:opacity-50"
-                >
-                  <Icon className="size-8 text-foreground" />
-                  <h3 className="mt-3 text-lg font-semibold text-foreground">
-                    {mode.title}
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                    {mode.description}
-                  </p>
-                </button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={isSelected ? "default" : "outline"}
-                  disabled={isSubmitting}
-                  className={cn(
-                    "mt-4 w-full sm:w-auto",
-                    isSelected &&
-                      "bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-100"
-                  )}
-                  onClick={() => handleSelect(mode.id)}
-                >
-                  Select
-                </Button>
-              </div>
+                {isSelected ? (
+                  <span className="absolute right-4 top-4 flex size-5 items-center justify-center rounded-full bg-gray-900 text-white dark:bg-white dark:text-black">
+                    <Check className="size-3" strokeWidth={3} />
+                  </span>
+                ) : null}
+                <Icon className="size-8 text-foreground" />
+                <h3 className="mt-3 text-lg font-semibold text-foreground">
+                  {mode.title}
+                </h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  {mode.description}
+                </p>
+              </button>
             );
           })}
         </div>
 
+        {selectedMode ? (
+          <button
+            type="button"
+            disabled={isSubmitting}
+            onClick={handleStartScan}
+            className="mt-4 w-full rounded-xl bg-gray-900 py-3 text-base font-semibold text-white transition-opacity hover:opacity-90 disabled:opacity-50 dark:bg-white dark:text-black"
+          >
+            Start Scan →
+          </button>
+        ) : null}
+
         <div className="mt-4">
-          <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onBack}
+            disabled={isSubmitting}
+          >
             Back
           </Button>
         </div>

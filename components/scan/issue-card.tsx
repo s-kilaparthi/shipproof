@@ -106,16 +106,14 @@ async function copyText(text: string, successMessage: string) {
 function UncertainFixBanner({ tool }: { tool: Tool }) {
   return (
     <div className="mb-3 flex gap-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
-      <span className="shrink-0" aria-hidden>
-        ⚠️
-      </span>
       <div>
         <p className="font-medium">
-          We recommend letting {tool} figure out the fix
+          ⚠️ We don&apos;t have a guaranteed fix for this
         </p>
         <p className="mt-0.5">
-          This fix may behave differently depending on your exact setup. Using
-          your AI tool is safer than applying the fix prompt directly.
+          Every app&apos;s setup is different, so we can&apos;t provide a
+          one-size-fits-all solution. Instead, paste the prompt below into {tool}{" "}
+          — it will analyse your exact codebase and fix it safely.
         </p>
       </div>
     </div>
@@ -145,7 +143,7 @@ function PrimaryCopyButton({
       ) : (
         <>
           <Copy className="size-3" />
-          Copy prompt for {tool}
+          Copy prompt → paste into {tool}
         </>
       )}
     </button>
@@ -725,7 +723,7 @@ export function IssueCard({
                 className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => setShowSkipMenu((open) => !open)}
               >
-                Can&apos;t fix right now
+                Skip this issue
               </button>
 
               {showSkipMenu ? (

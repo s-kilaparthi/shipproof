@@ -370,7 +370,7 @@ function ScanWizardContent() {
       selectedTool: (discoveryStatus?.tool as Tool) ?? prev.selectedTool,
     }));
     setFlowType("full");
-    setCurrentStepId("tool");
+    setCurrentStepId("discovery");
   };
 
   const handleToolSelect = (tool: Tool) => {
