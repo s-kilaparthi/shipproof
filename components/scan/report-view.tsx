@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RefreshCw, Share2, ShieldCheck } from "lucide-react";
+import { Lock, RefreshCw, Share2, ShieldCheck } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -64,6 +64,7 @@ interface ReportViewProps {
   hideReportFooter?: boolean;
   showScoreCelebration?: boolean;
   expandAllIssuePillars?: boolean;
+  isLimited?: boolean;
 }
 
 function getScoreCircleClasses(score: number): {
@@ -140,6 +141,7 @@ export function ReportView({
   hideReportFooter = false,
   showScoreCelebration = true,
   expandAllIssuePillars = false,
+  isLimited = false,
 }: ReportViewProps) {
   const router = useRouter();
   const [fixedIssueIds, setFixedIssueIds] = useState<string[]>(
@@ -153,6 +155,13 @@ export function ReportView({
   const activeIssues = useMemo(
     () => issues.filter((issue) => !skippedIssueIds.includes(issue.id)),
     [issues, skippedIssueIds]
+  );
+  const lockedIssueCount = useMemo(
+    () =>
+      isLimited
+        ? activeIssues.filter((issue) => issue.is_free_preview !== true).length
+        : 0,
+    [activeIssues, isLimited]
   );
   const counts = countIssuesBySeverity(activeIssues);
   const grouped = groupIssuesByPillar(issues);
@@ -322,6 +331,17 @@ export function ReportView({
             {issues.length} total issue{issues.length === 1 ? "" : "s"} found
           </h2>
           <SummaryCounts counts={counts} skippedCount={skippedIssueIds.length} />
+          {isLimited ? (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Free preview — 1 fix prompt unlocked.{" "}
+              <Link
+                href="/pricing"
+                className="font-medium text-gray-900 underline underline-offset-2 dark:text-gray-100"
+              >
+                Upgrade to unlock all
+              </Link>
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -363,9 +383,36 @@ export function ReportView({
                 fixedBadgeLabel={fixedBadgeLabel}
                 issueNotes={issueNotes}
                 readOnly={readOnly}
+                isLimited={isLimited}
               />
             ))}
           </div>
+
+          {isLimited && lockedIssueCount > 0 ? (
+            <div className="mt-8 rounded-xl border-2 border-gray-900 p-6 text-center dark:border-white">
+              <Lock className="mx-auto size-6 text-gray-400" />
+              <h3 className="mt-3 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+                {lockedIssueCount} more issue
+                {lockedIssueCount === 1 ? "" : "s"} locked
+              </h3>
+              <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                You unlocked 1 fix prompt on the free plan. Upgrade to Launch to
+                see every issue and get all fix prompts — one-time payment, no
+                subscription.
+              </p>
+              <Link href="/pricing" className="mt-5 inline-block">
+                <Button
+                  size="lg"
+                  className="h-11 bg-gray-900 px-6 text-sm font-semibold text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
+                >
+                  Unlock all fixes — $9
+                </Button>
+              </Link>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Join the waitlist · 50% off at launch
+              </p>
+            </div>
+          ) : null}
 
           {!readOnly ? (
             <SkippedIssuesSection

@@ -144,6 +144,7 @@ export interface ScanIssueRow {
   confidence?: Confidence;
   fix_confidence?: FixConfidence;
   evidence?: string | null;
+  is_free_preview?: boolean | null;
   created_at: string;
 }
 
@@ -174,6 +175,7 @@ export interface Scan {
   status: ScanStatus;
   overall_score?: number | null;
   pillar_scores?: PillarScores | null;
+  is_limited?: boolean | null;
   created_at: string;
   completed_at?: string | null;
   result?: ScanResult;
@@ -199,6 +201,16 @@ export interface CreateScanRequest {
 
 export interface CreateScanResponse {
   id: string;
+}
+
+export interface ScanLimitResponse {
+  plan: string;
+  total_scans_used: number;
+  /** `-1` means unlimited */
+  limit: number;
+  /** `-1` means unlimited */
+  scans_remaining: number;
+  can_scan: boolean;
 }
 
 export interface AnalyzeScanRequest {

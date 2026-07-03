@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server";
 import { ensureUserProfile, requireUser } from "@/lib/auth";
 import { scanCreateRatelimit } from "@/lib/ratelimit";
+import { getScanLimitStatus } from "@/lib/scan/scan-limit";
 import type { CreateScanRequest, Tool } from "@/types";
 import { TOOL_OPTIONS } from "@/types";
 
@@ -125,6 +126,37 @@ export async function POST(request: Request) {
       email: auth.user.email,
     });
 
+    const { data: userProfile, error: profileFetchError } = await supabase
+      .from("users")
+      .select("plan, total_scans_used")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+
+    if (profileFetchError) {
+      console.error("[scan/create] Failed to fetch user plan:", profileFetchError);
+      return Response.json(
+        { error: "Failed to load user plan", details: profileFetchError.message },
+        { status: 500 }
+      );
+    }
+
+    const limitStatus = getScanLimitStatus(
+      userProfile?.plan,
+      userProfile?.total_scans_used
+    );
+    const totalScansUsed = limitStatus.total_scans_used;
+
+    if (!limitStatus.can_scan) {
+      return Response.json(
+        {
+          error: "free_limit_reached",
+          message: "You have used your free scan",
+          ...limitStatus,
+        },
+        { status: 403 }
+      );
+    }
+
     const {
       data: { session },
       error: sessionError,
@@ -218,6 +250,15 @@ export async function POST(request: Request) {
     }
 
     console.log("[scan/create] Scan created successfully:", data.id);
+
+    const { error: usageError } = await supabase
+      .from("users")
+      .update({ total_scans_used: totalScansUsed + 1 })
+      .eq("id", auth.user.id);
+
+    if (usageError) {
+      console.error("[scan/create] Failed to increment scan usage:", usageError);
+    }
 
     return Response.json({ id: data.id });
   } catch (error) {

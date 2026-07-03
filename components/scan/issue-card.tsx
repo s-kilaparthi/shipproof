@@ -1,10 +1,12 @@
 "use client";
 
-import { ChevronDown, Check, Copy } from "lucide-react";
+import Link from "next/link";
+import { ChevronDown, Check, Copy, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { SqlFixDisplay } from "@/components/scan/sql-fix-display";
+import { Button } from "@/components/ui/button";
 import { formatAllSteps, formatStepText } from "@/lib/scan/fix-parser";
 import {
   extractTerminalCommand,
@@ -38,6 +40,8 @@ interface IssueCardProps {
   fixedBadgeLabel?: string;
   issueNote?: string;
   readOnly?: boolean;
+  /** Free-tier limited report: lock non-preview issues */
+  isLimited?: boolean;
 }
 
 const CARD_CLASS =
@@ -242,10 +246,13 @@ export function IssueCard({
   fixedBadgeLabel,
   issueNote,
   readOnly = false,
+  isLimited = false,
 }: IssueCardProps) {
+  const isFreePreview = isLimited && issue.is_free_preview === true;
+  const isLocked = isLimited && !isFreePreview;
   const askToolPrompt = buildAskToolPrompt(issue, tool);
   const [cardExpanded, setCardExpanded] = useState(!collapsedByDefault);
-  const [fixExpanded, setFixExpanded] = useState(false);
+  const [fixExpanded, setFixExpanded] = useState(isFreePreview);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
   const [showSkipMenu, setShowSkipMenu] = useState(false);
   const [selectedSkipReason, setSelectedSkipReason] =
@@ -263,7 +270,9 @@ export function IssueCard({
   const isMultiStep = issue.is_multi_step && (issue.fix_steps?.length ?? 0) >= 2;
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
-  const isUncertainFix = issue.fix_confidence === "uncertain";
+  // Free preview always shows the clean certain-fix UI (no uncertain banners).
+  const isUncertainFix =
+    !isFreePreview && issue.fix_confidence === "uncertain";
   const severityLabel = formatSeverityLabel(issue.severity);
   const pillarLabel = PILLAR_LABELS[issue.pillar] ?? issue.pillar;
 
@@ -584,6 +593,50 @@ export function IssueCard({
     </>
   );
 
+  if (isLocked) {
+    const severity = issue.severity.toLowerCase();
+    const lockedMessage =
+      severity === "critical"
+        ? "Needs immediate attention"
+        : severity === "warning"
+          ? "Recommended fix available"
+          : "Improvement available";
+
+    return (
+      <article className={cn(CARD_CLASS, "flex items-center justify-between gap-4")}>
+        <div className="min-w-0 flex items-start gap-3">
+          <Lock className="mt-0.5 size-4 shrink-0 text-gray-400" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  getSeverityText(issue.severity)
+                )}
+              >
+                {severityLabel}
+              </span>
+              <span className="text-xs text-gray-400">·</span>
+              <span className="text-xs text-gray-400">{pillarLabel}</span>
+            </div>
+            <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {lockedMessage}
+            </p>
+          </div>
+        </div>
+        <Link href="/pricing" className="shrink-0">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 border-gray-900 px-3 text-xs dark:border-gray-100"
+          >
+            Unlock
+          </Button>
+        </Link>
+      </article>
+    );
+  }
+
   if (isSkipped && !cardExpanded) {
     return (
       <article className={cn(CARD_CLASS, "opacity-70")}>
@@ -735,7 +788,7 @@ export function IssueCard({
             </div>
           ) : null}
 
-          {onSkip ? (
+          {onSkip && !isFreePreview ? (
             <div className="relative mt-3 flex justify-end">
               <button
                 type="button"

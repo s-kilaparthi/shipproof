@@ -28,6 +28,7 @@ interface PillarIssueGroupProps {
   fixedBadgeLabel?: string;
   issueNotes?: Record<string, string>;
   readOnly?: boolean;
+  isLimited?: boolean;
 }
 
 function SeverityCounts({
@@ -100,6 +101,7 @@ export function PillarIssueGroup({
   fixedBadgeLabel,
   issueNotes,
   readOnly = false,
+  isLimited = false,
 }: PillarIssueGroupProps) {
   const activeIssues = issues.filter((issue) => !skippedIssueIds.includes(issue.id));
   const counts = countIssuesBySeverity(activeIssues);
@@ -172,6 +174,7 @@ export function PillarIssueGroup({
                 }
                 issueNote={issueNotes?.[issue.id]}
                 readOnly={readOnly}
+                isLimited={isLimited}
               />
             ))}
           </div>

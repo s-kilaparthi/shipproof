@@ -5,6 +5,7 @@ import { createServerClient } from "@/lib/supabase/server";
 import { runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
 import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
+import { pickFreePreviewIndex } from "@/lib/scan/free-tier";
 import { parseFixPrompt } from "@/lib/scan/fix-parser";
 import { generateFingerprint } from "@/lib/scan/fingerprint";
 import { fetchTargetedFiles } from "@/lib/scan/github-files";
@@ -70,6 +71,14 @@ export async function POST(request: Request) {
     if (scanError || !scan) {
       return Response.json({ error: "Scan not found" }, { status: 404 });
     }
+
+    const { data: userProfile } = await supabase
+      .from("users")
+      .select("plan")
+      .eq("id", auth.user.id)
+      .maybeSingle();
+
+    const isFreePlan = (userProfile?.plan ?? "free") === "free";
 
     const useCachedDiscovery = body.use_cached_discovery === true;
     const discoveryResponse = useCachedDiscovery
@@ -162,6 +171,7 @@ export async function POST(request: Request) {
           confidence: issue.confidence ?? "medium",
           fix_confidence: issue.fix_confidence ?? "certain",
           evidence: issue.evidence ?? null,
+          is_free_preview: false,
           fingerprint: generateFingerprint({
             pillar: issue.pillar,
             issue_name: issue.issue_name,
@@ -172,6 +182,13 @@ export async function POST(request: Request) {
 
       const MAX_ISSUES = 200;
       const cappedRows = rows.slice(0, MAX_ISSUES);
+
+      if (isFreePlan) {
+        const previewIndex = pickFreePreviewIndex(cappedRows);
+        if (previewIndex >= 0) {
+          cappedRows[previewIndex].is_free_preview = true;
+        }
+      }
 
       const { error: insertError } = await supabase
         .from("scan_results")
@@ -197,6 +214,7 @@ export async function POST(request: Request) {
         discovery_cached_at: discoveryCachedAt,
         used_cached_discovery: useCachedDiscovery,
         app_stage: appStage,
+        is_limited: isFreePlan,
       })
       .eq("id", scan.id);
 
@@ -209,6 +227,7 @@ export async function POST(request: Request) {
           completed_at: new Date().toISOString(),
           discovery_cached_at: discoveryCachedAt,
           used_cached_discovery: useCachedDiscovery,
+          is_limited: isFreePlan,
         })
         .eq("id", scan.id);
     }

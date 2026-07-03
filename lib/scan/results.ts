@@ -71,6 +71,7 @@ export function normalizeScanIssues(
         confidence: (row.confidence ?? "medium") as Confidence,
         fix_confidence: (row.fix_confidence ?? "certain") as FixConfidence,
         evidence: row.evidence ?? null,
+        is_free_preview: row.is_free_preview === true,
         fix_type: normalizeFixType(
           row.fix_type ??
             fixMeta.fix_steps?.[0]?.fixType ??

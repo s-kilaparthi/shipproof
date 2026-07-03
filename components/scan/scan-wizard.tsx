@@ -170,9 +170,19 @@ function ScanWizardContent() {
         const createData = (await createResponse.json()) as CreateScanResponse & {
           error?: string;
           details?: string;
+          message?: string;
         };
 
         if (!createResponse.ok) {
+          if (
+            createResponse.status === 403 &&
+            createData.error === "free_limit_reached"
+          ) {
+            throw new Error(
+              createData.message ??
+                "You have used your free scan. Upgrade on the pricing page to scan again."
+            );
+          }
           throw new Error(
             [createData.error, createData.details].filter(Boolean).join(" — ") ||
               "Failed to create scan"

@@ -46,7 +46,23 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
     .order("created_at", { ascending: true })
     .limit(200);
 
-  const issues = normalizeScanIssues(resultRows ?? [], scan.id);
+  const isLimited = scan.is_limited === true;
+  const issues = normalizeScanIssues(resultRows ?? [], scan.id).map((issue) => {
+    if (isLimited && issue.is_free_preview !== true) {
+      return {
+        ...issue,
+        issue_name: "",
+        description: "",
+        file_path: null,
+        line_number: null,
+        fix_prompt: "",
+        fix_steps: null,
+        is_multi_step: false,
+        evidence: null,
+      };
+    }
+    return issue;
+  });
   const pillarScores: PillarScores = parsePillarScores(
     scan.pillar_scores,
     issues
@@ -119,17 +135,18 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         </Link>
 
         <ReportView
-        scanId={scan.id}
-        repoName={scan.repo_name}
-        tool={scan.tool_selected as Tool}
-        scanDate={scanDate}
-        status={scan.status}
-        pillarScores={pillarScores}
-        issues={issues}
-        scoreImprovement={scoreImprovement}
-        isQuickRescan={quickRescan}
-        discoveryAgeLabel={discoveryAgeLabel}
-        canQuickRescan={canQuickRescan}
+          scanId={scan.id}
+          repoName={scan.repo_name}
+          tool={scan.tool_selected as Tool}
+          scanDate={scanDate}
+          status={scan.status}
+          pillarScores={pillarScores}
+          issues={issues}
+          scoreImprovement={scoreImprovement}
+          isQuickRescan={quickRescan}
+          discoveryAgeLabel={discoveryAgeLabel}
+          canQuickRescan={canQuickRescan}
+          isLimited={isLimited}
         />
       </div>
     </main>

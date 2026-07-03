@@ -1,17 +1,18 @@
 import Link from "next/link";
-import { ScanSearch, ShieldCheck } from "lucide-react";
+import { ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { OnboardingWelcome } from "@/components/dashboard/onboarding-welcome";
 import { ScanHistory } from "@/components/dashboard/scan-history";
+import { StartNewScan } from "@/components/dashboard/start-new-scan";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
 import {
   getDiscoveryAgeDays,
   getDiscoveryReferenceDate,
   requiresFreshDiscovery,
 } from "@/lib/scan/discovery-cache";
+import { getScanLimitStatus } from "@/lib/scan/scan-limit";
 import { normalizeScanIssues, parsePillarScores } from "@/lib/scan/results";
 import { createServerClient } from "@/lib/supabase/server";
 
@@ -149,6 +150,21 @@ export default async function DashboardPage() {
     })),
   }));
 
+  const { data: userProfile } = await supabase
+    .from("users")
+    .select("plan, total_scans_used")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  const limitStatus = getScanLimitStatus(
+    userProfile?.plan,
+    userProfile?.total_scans_used
+  );
+
+  const latestCompleted = scansWithResults.find(
+    (item) => item.scan.status === "completed"
+  );
+
   return (
     <main className="min-h-screen overflow-x-hidden bg-background">
       <DashboardTopBar />
@@ -170,12 +186,15 @@ export default async function DashboardPage() {
         </div>
 
         <div className="mt-8">
-          <Link href="/scan/new" className="block w-full sm:inline-block sm:w-auto">
-            <Button className="w-full gap-2 sm:w-auto">
-              <ScanSearch className="size-4" />
-              Start New Scan
-            </Button>
-          </Link>
+          <StartNewScan
+            canScan={limitStatus.can_scan}
+            lastScanId={latestCompleted?.scan.id ?? scansWithResults[0]?.scan.id}
+            lastIssueCount={
+              latestCompleted?.issues.length ??
+              scansWithResults[0]?.issues.length ??
+              0
+            }
+          />
         </div>
 
         <ScanHistory repoGroups={scanHistoryGroups} />
