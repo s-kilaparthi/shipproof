@@ -35,6 +35,9 @@ interface IssueCardProps {
   onSkip?: (reason: SkipReason) => void;
   onUnskip?: () => void;
   collapsedByDefault?: boolean;
+  fixedBadgeLabel?: string;
+  issueNote?: string;
+  readOnly?: boolean;
 }
 
 const CARD_CLASS =
@@ -236,6 +239,9 @@ export function IssueCard({
   onSkip,
   onUnskip,
   collapsedByDefault = false,
+  fixedBadgeLabel,
+  issueNote,
+  readOnly = false,
 }: IssueCardProps) {
   const askToolPrompt = buildAskToolPrompt(issue, tool);
   const [cardExpanded, setCardExpanded] = useState(!collapsedByDefault);
@@ -655,6 +661,13 @@ export function IssueCard({
         {issue.issue_name}
       </h3>
 
+      {isFixed && fixedBadgeLabel ? (
+        <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-green-600 dark:text-green-400">
+          <Check className="size-3" strokeWidth={3} />
+          {fixedBadgeLabel}
+        </p>
+      ) : null}
+
       {(issue.file_path || issue.line_number) && (
         <p className="mt-1 font-mono text-xs text-gray-400 dark:text-gray-500">
           {issue.file_path}
@@ -665,6 +678,12 @@ export function IssueCard({
       <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
         {issue.description}
       </p>
+
+      {issueNote ? (
+        <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-700 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-400">
+          {issueNote}
+        </p>
+      ) : null}
 
       {issue.evidence ? (
         <div className="mt-2">
@@ -681,7 +700,7 @@ export function IssueCard({
         </div>
       ) : null}
 
-      {!isFixed && !isSkipped ? (
+      {!isFixed && !isSkipped && !readOnly ? (
         <>
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <button
@@ -762,7 +781,7 @@ export function IssueCard({
         </>
       ) : null}
 
-      {isFixed && onToggleFixed ? (
+      {isFixed && onToggleFixed && !readOnly ? (
         <label className="mt-3 inline-flex cursor-pointer items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
           <input
             type="checkbox"

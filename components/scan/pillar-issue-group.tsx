@@ -25,6 +25,9 @@ interface PillarIssueGroupProps {
   onToggle: () => void;
   onToggleFixed: (issueId: string) => void;
   onSkipIssue: (issueId: string, reason: SkipReason) => void;
+  fixedBadgeLabel?: string;
+  issueNotes?: Record<string, string>;
+  readOnly?: boolean;
 }
 
 function SeverityCounts({
@@ -94,6 +97,9 @@ export function PillarIssueGroup({
   onToggle,
   onToggleFixed,
   onSkipIssue,
+  fixedBadgeLabel,
+  issueNotes,
+  readOnly = false,
 }: PillarIssueGroupProps) {
   const activeIssues = issues.filter((issue) => !skippedIssueIds.includes(issue.id));
   const counts = countIssuesBySeverity(activeIssues);
@@ -155,8 +161,17 @@ export function PillarIssueGroup({
                 issue={issue}
                 tool={tool}
                 isFixed={fixedIssueIds.includes(issue.id)}
-                onToggleFixed={() => onToggleFixed(issue.id)}
-                onSkip={(reason) => onSkipIssue(issue.id, reason)}
+                onToggleFixed={
+                  readOnly ? undefined : () => onToggleFixed(issue.id)
+                }
+                onSkip={
+                  readOnly ? undefined : (reason) => onSkipIssue(issue.id, reason)
+                }
+                fixedBadgeLabel={
+                  fixedIssueIds.includes(issue.id) ? fixedBadgeLabel : undefined
+                }
+                issueNote={issueNotes?.[issue.id]}
+                readOnly={readOnly}
               />
             ))}
           </div>

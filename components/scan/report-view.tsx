@@ -56,6 +56,14 @@ interface ReportViewProps {
   isQuickRescan?: boolean;
   discoveryAgeLabel?: string;
   canQuickRescan?: boolean;
+  initialFixedIssueIds?: string[];
+  readOnly?: boolean;
+  scoreSubtitle?: string;
+  fixedBadgeLabel?: string;
+  issueNotes?: Record<string, string>;
+  hideReportFooter?: boolean;
+  showScoreCelebration?: boolean;
+  expandAllIssuePillars?: boolean;
 }
 
 function getScoreCircleClasses(score: number): {
@@ -138,9 +146,19 @@ export function ReportView({
   isQuickRescan = false,
   discoveryAgeLabel,
   canQuickRescan = false,
+  initialFixedIssueIds,
+  readOnly = false,
+  scoreSubtitle,
+  fixedBadgeLabel,
+  issueNotes,
+  hideReportFooter = false,
+  showScoreCelebration = true,
+  expandAllIssuePillars = false,
 }: ReportViewProps) {
   const router = useRouter();
-  const [fixedIssueIds, setFixedIssueIds] = useState<string[]>([]);
+  const [fixedIssueIds, setFixedIssueIds] = useState<string[]>(
+    () => initialFixedIssueIds ?? []
+  );
   const [skippedIssues, setSkippedIssues] = useState<Record<string, SkipReason>>({});
   const skippedIssueIds = useMemo(
     () => Object.keys(skippedIssues),
@@ -157,21 +175,30 @@ export function ReportView({
   const rescanHref = `/scan/new?repo=${encodeURIComponent(repoName)}&mode=${canQuickRescan ? "quick" : "full"}`;
 
   const initialExpanded = useMemo(() => {
+    if (expandAllIssuePillars) {
+      return new Set(
+        ALL_PILLARS.filter(({ id }) => groupIssuesByPillar(activeIssues)[id].length > 0).map(
+          ({ id }) => id
+        )
+      );
+    }
     const activeGrouped = groupIssuesByPillar(activeIssues);
     return computeInitialExpandedPillars(activeGrouped, ALL_PILLARS);
-  }, [activeIssues]);
+  }, [activeIssues, expandAllIssuePillars]);
 
   const [expandedPillars, setExpandedPillars] = useState<Set<Pillar>>(
     () => initialExpanded
   );
 
   useEffect(() => {
+    if (readOnly) return;
     setFixedIssueIds(readFixedIssueIds(scanId));
     setSkippedIssues(readSkippedIssues(scanId));
-  }, [scanId]);
+  }, [scanId, readOnly]);
 
   const handleToggleFixed = useCallback(
     (issueId: string) => {
+      if (readOnly) return;
       setFixedIssueIds((current) => {
         const isCurrentlyFixed = current.includes(issueId);
         return isCurrentlyFixed
@@ -179,21 +206,23 @@ export function ReportView({
           : markIssueFixed(scanId, issueId);
       });
     },
-    [scanId]
+    [scanId, readOnly]
   );
 
   const handleSkipIssue = useCallback(
     (issueId: string, reason: SkipReason) => {
+      if (readOnly) return;
       setSkippedIssues(markIssueSkipped(scanId, issueId, reason));
     },
-    [scanId]
+    [scanId, readOnly]
   );
 
   const handleUnskipIssue = useCallback(
     (issueId: string) => {
+      if (readOnly) return;
       setSkippedIssues(unmarkIssueSkipped(scanId, issueId));
     },
-    [scanId]
+    [scanId, readOnly]
   );
 
   const handleRescanClick = useCallback(() => {
@@ -231,7 +260,7 @@ export function ReportView({
 
   return (
     <div>
-      {scoreImprovement ? (
+      {scoreImprovement && showScoreCelebration ? (
         <ScoreCelebrationBanner
           previousScore={scoreImprovement.previousScore}
           currentScore={pillarScores.overall}
@@ -274,10 +303,16 @@ export function ReportView({
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {scoreLabel}
           </p>
-          <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
-            {pillarScores.scoredPillarCount ?? 0} of{" "}
-            {pillarScores.totalPillarCount ?? 8} pillars scored
-          </p>
+          {scoreSubtitle ? (
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+              {scoreSubtitle}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-xs text-gray-400 dark:text-gray-500">
+              {pillarScores.scoredPillarCount ?? 0} of{" "}
+              {pillarScores.totalPillarCount ?? 8} pillars scored
+            </p>
+          )}
         </div>
       </div>
 
@@ -321,7 +356,7 @@ export function ReportView({
             fixedCount={fixedIssueIds.length}
             totalCount={activeIssues.length}
             rescanHref={rescanHref}
-            onRescanClick={handleRescanClick}
+            onRescanClick={readOnly ? undefined : handleRescanClick}
           />
 
           <div>
@@ -339,20 +374,26 @@ export function ReportView({
                 onToggle={() => togglePillar(id)}
                 onToggleFixed={handleToggleFixed}
                 onSkipIssue={handleSkipIssue}
+                fixedBadgeLabel={fixedBadgeLabel}
+                issueNotes={issueNotes}
+                readOnly={readOnly}
               />
             ))}
           </div>
 
-          <SkippedIssuesSection
-            issues={issues}
-            skippedIssues={skippedIssues}
-            tool={tool}
-            onUnskip={handleUnskipIssue}
-          />
+          {!readOnly ? (
+            <SkippedIssuesSection
+              issues={issues}
+              skippedIssues={skippedIssues}
+              tool={tool}
+              onUnskip={handleUnskipIssue}
+            />
+          ) : null}
         </>
       )}
 
       {/* Footer */}
+      {!hideReportFooter ? (
       <div className="mt-10 border-t border-gray-100 pt-6 dark:border-gray-800">
         <div className="flex flex-col gap-2 sm:flex-row">
           <Link href={rescanHref} onClick={handleRescanClick}>
@@ -387,6 +428,7 @@ export function ReportView({
           before rescanning for best results.
         </p>
       </div>
+      ) : null}
     </div>
   );
 }

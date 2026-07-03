@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { DemoReportContent } from "@/components/scan/demo-report-content";
 
 export default function DemoPage() {
-  redirect("/login");
+  return <DemoReportContent />;
 }
