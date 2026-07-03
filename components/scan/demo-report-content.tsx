@@ -62,7 +62,7 @@ export function DemoReportContent() {
             scanId={DEMO_SCAN_ID_EXPORT}
             repoName="shipproof"
             tool="Cursor"
-            scanDate="March 1, 2026"
+            scanDate="July 2, 2026"
             status="completed"
             pillarScores={DEMO_PILLAR_SCORES}
             issues={DEMO_ISSUES}

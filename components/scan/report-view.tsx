@@ -277,7 +277,7 @@ export function ReportView({
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
             {isQuickRescan
               ? `Quick rescan · discovery from ${discoveryAgeLabel ?? "previous scan"}`
-              : "Full rescan · fresh discovery"}
+              : "Full Scan · Fresh discovery"}
           </p>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Built with {tool} · Scanned {scanDate} · {status}
