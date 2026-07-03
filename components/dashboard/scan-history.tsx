@@ -260,9 +260,11 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
       <div className="mt-12 min-w-0 space-y-8">
         <h2 className="text-lg font-semibold text-foreground">Scan History</h2>
         {repoGroups.map(({ repoName, scans, canQuickRescan }) => {
+          const isSingleRepo = repoGroups.length === 1;
           const isExpanded = expandedRepos.has(repoName);
-          const hasMoreThanTwo = scans.length > 2;
-          const visibleScans = isExpanded ? scans : scans.slice(0, 2);
+          const showExpandControls = !isSingleRepo && scans.length > 2;
+          const visibleScans =
+            isSingleRepo || isExpanded ? scans : scans.slice(0, 2);
 
           return (
             <div key={repoName} className="min-w-0 space-y-3">
@@ -289,7 +291,7 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
                 ))}
               </div>
 
-              {hasMoreThanTwo ? (
+              {showExpandControls ? (
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <button
                     type="button"
