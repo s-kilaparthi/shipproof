@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +13,13 @@ interface WaitlistFormProps {
   onSuccess?: () => void;
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+type FormStatus =
+  | { type: "idle" }
+  | { type: "success"; email: string }
+  | { type: "already"; email: string };
+
 export function WaitlistForm({
   plan = null,
   planLabel,
@@ -22,16 +28,21 @@ export function WaitlistForm({
 }: WaitlistFormProps) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
+  const [status, setStatus] = useState<FormStatus>({ type: "idle" });
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    const trimmed = email.trim();
-    if (!trimmed) {
-      toast.error("Enter your email address");
+    const trimmed = email.trim().toLowerCase();
+
+    if (!trimmed || !EMAIL_RE.test(trimmed)) {
+      setValidationError("Please enter a valid email address");
       return;
     }
 
+    setValidationError(null);
     setLoading(true);
+
     try {
       const response = await fetch("/api/waitlist", {
         method: "POST",
@@ -39,29 +50,60 @@ export function WaitlistForm({
         body: JSON.stringify({ email: trimmed, plan }),
       });
 
-      const data = (await response.json()) as { error?: string };
+      const data = (await response.json()) as {
+        error?: string;
+        ok?: boolean;
+        updated?: boolean;
+      };
 
       if (!response.ok) {
-        toast.error(data.error ?? "Failed to join waitlist");
+        if (response.status === 400) {
+          setValidationError("Please enter a valid email address");
+          return;
+        }
+        setValidationError(data.error ?? "Something went wrong. Please try again.");
         return;
       }
 
-      toast.success(
-        plan === "launch"
-          ? "You're on the Launch plan waitlist!"
-          : "You're on the waitlist!"
-      );
-      setEmail("");
+      if (data.updated) {
+        setStatus({ type: "already", email: trimmed });
+      } else {
+        setStatus({ type: "success", email: trimmed });
+      }
       onSuccess?.();
     } catch {
-      toast.error("Failed to join waitlist");
+      setValidationError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  if (status.type === "success") {
+    return (
+      <div className={cn("w-full text-center", className)}>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          <span className="text-green-600 dark:text-green-500">✓</span>{" "}
+          You&apos;re on the list!
+        </p>
+        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          We&apos;ll email you at {status.email} when payments launch.
+        </p>
+      </div>
+    );
+  }
+
+  if (status.type === "already") {
+    return (
+      <div className={cn("w-full text-center", className)}>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          You&apos;re already on the waitlist!
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <form onSubmit={handleSubmit} className={cn("w-full", className)}>
+    <form onSubmit={handleSubmit} className={cn("w-full", className)} noValidate>
       {planLabel ? (
         <p className="mb-3 text-center text-sm font-medium text-foreground">
           {planLabel}
@@ -74,19 +116,24 @@ export function WaitlistForm({
           autoComplete="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value);
+            if (validationError) setValidationError(null);
+          }}
           disabled={loading}
           className="h-11 w-full sm:max-w-xs"
-          required
         />
         <Button
           type="submit"
           disabled={loading}
           className="h-11 shrink-0 bg-gray-900 px-6 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
         >
-          {loading ? "Joining…" : "Join Waitlist"}
+          {loading ? "Adding you..." : "Join Waitlist"}
         </Button>
       </div>
+      {validationError ? (
+        <p className="mt-2 text-center text-xs text-red-500">{validationError}</p>
+      ) : null}
     </form>
   );
 }
