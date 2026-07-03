@@ -742,7 +742,7 @@ export function IssueCard({
                 className="text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 onClick={() => setShowSkipMenu((open) => !open)}
               >
-                Skip this issue
+                Want to skip?
               </button>
 
               {showSkipMenu ? (

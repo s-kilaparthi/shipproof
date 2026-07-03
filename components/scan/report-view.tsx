@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { RefreshCw, Share2, ShieldCheck } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ScoreCelebrationBanner } from "@/components/scan/score-celebration-banner";
@@ -89,42 +89,28 @@ function SummaryCounts({
   counts: ReturnType<typeof countIssuesBySeverity>;
   skippedCount?: number;
 }) {
-  const parts: ReactNode[] = [];
-
-  if (counts.critical > 0) {
-    parts.push(
-      <span key="critical" className="font-semibold text-red-500">
-        {counts.critical} critical
-      </span>
-    );
-  }
-  if (counts.warning > 0) {
-    parts.push(
-      <span key="warning" className="font-semibold text-amber-500">
-        {counts.warning} warning{counts.warning === 1 ? "" : "s"}
-      </span>
-    );
-  }
-  if (counts.info > 0) {
-    parts.push(
-      <span key="info" className="font-semibold text-gray-500">
-        {counts.info} info
-      </span>
-    );
-  }
-
   return (
     <div className="space-y-1">
-      <p className="flex flex-wrap items-center gap-x-2 text-sm">
-        {parts.map((part, index) => (
-          <span key={index} className="inline-flex items-center gap-2">
-            {index > 0 ? (
-              <span className="text-gray-300 dark:text-gray-600">·</span>
-            ) : null}
-            {part}
-          </span>
-        ))}
-      </p>
+      <div className="flex flex-row flex-wrap gap-8">
+        <div>
+          <p className="text-lg font-bold text-red-500">
+            {counts.critical} Critical
+          </p>
+          <p className="mt-0.5 text-xs text-gray-400">Fix before launch</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-amber-500">
+            {counts.warning} Warning{counts.warning === 1 ? "" : "s"}
+          </p>
+          <p className="mt-0.5 text-xs text-gray-400">Fix soon, not urgent</p>
+        </div>
+        <div>
+          <p className="text-lg font-bold text-gray-500">
+            {counts.info} Info
+          </p>
+          <p className="mt-0.5 text-xs text-gray-400">Optional improvements</p>
+        </div>
+      </div>
       {skippedCount > 0 ? (
         <p className="text-xs text-gray-400 dark:text-gray-500">
           ({skippedCount} issue{skippedCount === 1 ? "" : "s"} skipped)
