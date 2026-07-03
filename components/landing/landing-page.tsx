@@ -23,6 +23,7 @@ import {
 
 import { FaqSection } from "@/components/landing/faq-section";
 import { LandingNav } from "@/components/landing/landing-nav";
+import { PricingSection } from "@/components/landing/pricing-section";
 import { FadeIn, HeroFadeIn } from "@/components/landing/motion";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -135,54 +136,6 @@ const TOOLS = [
   { name: "Codex", desc: "OpenAI's coding agent" },
   { name: "Replit", desc: "AI app builder" },
   { name: "Windsurf", desc: "AI code editor" },
-];
-
-const PRICING: Array<{
-  name: string;
-  price: string;
-  subtitle: string;
-  tagline?: string;
-  features: string[];
-  cta: string;
-  popular: boolean;
-}> = [
-  {
-    name: "Free",
-    price: "Free",
-    subtitle: "Perfect for trying ShipProof",
-    features: ["1 free scan", "Top 3 issues only", "Basic report"],
-    cta: "Start Free",
-    popular: false,
-  },
-  {
-    name: "One-Time",
-    price: "$49",
-    subtitle: "one-time payment",
-    tagline: "For your next launch",
-    features: [
-      "1 full scan",
-      "All 5 analysis layers",
-      "Complete report",
-      "All fix prompts",
-      "30 day scan history",
-    ],
-    cta: "Get Full Scan",
-    popular: true,
-  },
-  {
-    name: "Pro",
-    price: "$29/month",
-    subtitle: "For active builders",
-    features: [
-      "Unlimited scans",
-      "All 5 analysis layers",
-      "Full reports",
-      "Priority support",
-      "Scan history forever",
-    ],
-    cta: "Start Pro",
-    popular: false,
-  },
 ];
 
 const TRUST_CARDS: Array<{
@@ -526,98 +479,7 @@ export function LandingPage() {
 
       {/* Pricing */}
       <section className="border-t border-card-border bg-muted-background px-4 py-24 sm:px-6">
-        <div className="mx-auto max-w-6xl">
-          <FadeIn>
-            <SectionHeading>Start free. Scale when you&apos;re ready.</SectionHeading>
-          </FadeIn>
-
-          <div className="mt-12 grid gap-6 lg:grid-cols-3">
-            {PRICING.map((plan, i) => (
-              <FadeIn key={plan.name} delay={i * 0.1}>
-                <motion.div
-                  whileHover={{ y: -4, transition: { duration: 0.2 } }}
-                  className={cn(
-                    "relative flex h-full flex-col rounded-xl border p-6 shadow-sm transition-shadow hover:shadow-md",
-                    plan.popular
-                      ? "border-2 border-primary bg-primary text-primary-foreground"
-                      : "border-card-border bg-card text-foreground"
-                  )}
-                >
-                  {plan.popular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full border border-card-border bg-background px-3 py-0.5 text-xs font-medium text-foreground">
-                      Most Popular
-                    </span>
-                  )}
-                  <h3
-                    className={cn(
-                      "text-lg font-semibold",
-                      plan.popular ? "text-primary-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {plan.name}
-                  </h3>
-                  <p
-                    className={cn(
-                      "mt-2 text-3xl font-bold",
-                      plan.popular ? "text-primary-foreground" : "text-foreground"
-                    )}
-                  >
-                    {plan.price}
-                  </p>
-                  <p
-                    className={cn(
-                      "text-sm",
-                      plan.popular ? "text-primary-foreground/70" : "text-muted-foreground"
-                    )}
-                  >
-                    {plan.subtitle}
-                  </p>
-                  {plan.tagline && (
-                    <p
-                      className={cn(
-                        "mt-1 text-sm",
-                        plan.popular ? "text-primary-foreground/80" : "text-muted-foreground"
-                      )}
-                    >
-                      {plan.tagline}
-                    </p>
-                  )}
-                  <ul className="mt-6 flex-1 space-y-2">
-                    {plan.features.map((f) => (
-                      <li
-                        key={f}
-                        className={cn(
-                          "flex items-center gap-2 text-sm",
-                          plan.popular ? "text-primary-foreground/90" : "text-muted-foreground"
-                        )}
-                      >
-                        <Check
-                          className={cn(
-                            "size-4",
-                            plan.popular ? "text-primary-foreground" : "text-foreground"
-                          )}
-                        />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href="/login" className="mt-6 block">
-                    <Button
-                      className={cn(
-                        "w-full",
-                        plan.popular &&
-                          "border border-primary-foreground bg-primary-foreground text-primary hover:opacity-80"
-                      )}
-                      variant={plan.popular ? "default" : "outline"}
-                    >
-                      {plan.cta}
-                    </Button>
-                  </Link>
-                </motion.div>
-              </FadeIn>
-            ))}
-          </div>
-        </div>
+        <PricingSection />
       </section>
 
       {/* Trust */}

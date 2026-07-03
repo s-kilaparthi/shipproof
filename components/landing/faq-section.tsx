@@ -8,6 +8,18 @@ import { cn } from "@/lib/utils";
 
 const FAQ_ITEMS = [
   {
+    q: "How does the free scan work?",
+    a: "Sign in with GitHub, select your repo, run our discovery prompt in your AI tool and paste the response. We scan your code and show all issues. You get 1 complete fix prompt to try before upgrading.",
+  },
+  {
+    q: "What's in the $9 Launch plan?",
+    a: "3 full scans with complete reports and all fix prompts. One-time payment, no subscription. Coming soon.",
+  },
+  {
+    q: "When will payments launch?",
+    a: "Very soon. Join the waitlist to get notified first and receive 50% off.",
+  },
+  {
     q: "Do you store my source code?",
     a: "No. We fetch only the specific files needed for analysis, scan them in memory, and immediately discard them. Only the security issues found are saved to your account — never your source code.",
   },
