@@ -12,7 +12,6 @@ interface SkippedIssuesSectionProps {
   issues: ScanIssueRow[];
   skippedIssues: Record<string, SkipReason>;
   tool: Tool;
-  discoveryResponse?: string | null;
   onUnskip: (issueId: string) => void;
 }
 
@@ -20,7 +19,6 @@ export function SkippedIssuesSection({
   issues,
   skippedIssues,
   tool,
-  discoveryResponse,
   onUnskip,
 }: SkippedIssuesSectionProps) {
   const skippedIds = Object.keys(skippedIssues);
@@ -60,7 +58,6 @@ export function SkippedIssuesSection({
                 key={issue.id}
                 issue={issue}
                 tool={tool}
-                discoveryResponse={discoveryResponse}
                 isSkipped
                 skipReason={skippedIssues[issue.id] ?? null}
                 collapsedByDefault

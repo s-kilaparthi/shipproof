@@ -49,7 +49,6 @@ interface ReportViewProps {
   status: string;
   pillarScores: PillarScores;
   issues: ScanIssueRow[];
-  discoveryResponse?: string | null;
   scoreImprovement?: {
     previousScore: number;
     fixedCount: number;
@@ -135,7 +134,6 @@ export function ReportView({
   status,
   pillarScores,
   issues,
-  discoveryResponse,
   scoreImprovement = null,
   isQuickRescan = false,
   discoveryAgeLabel,
@@ -335,7 +333,6 @@ export function ReportView({
                 issues={grouped[id]}
                 pillarScores={pillarScores}
                 tool={tool}
-                discoveryResponse={discoveryResponse}
                 fixedIssueIds={fixedIssueIds}
                 skippedIssueIds={skippedIssueIds}
                 isOpen={expandedPillars.has(id)}
@@ -350,7 +347,6 @@ export function ReportView({
             issues={issues}
             skippedIssues={skippedIssues}
             tool={tool}
-            discoveryResponse={discoveryResponse}
             onUnskip={handleUnskipIssue}
           />
         </>

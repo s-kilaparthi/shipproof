@@ -126,7 +126,6 @@ export default async function ScanReportPage({ params }: ReportPageProps) {
         status={scan.status}
         pillarScores={pillarScores}
         issues={issues}
-        discoveryResponse={scan.discovery_response}
         scoreImprovement={scoreImprovement}
         isQuickRescan={quickRescan}
         discoveryAgeLabel={discoveryAgeLabel}

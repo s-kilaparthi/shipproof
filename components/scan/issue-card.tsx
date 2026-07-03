@@ -11,7 +11,6 @@ import {
   getCopyButtonLabel,
   getMultiStepIntro,
 } from "@/lib/scan/fix-type-utils";
-import { extractStackSummaryFromDiscovery } from "@/lib/scan/discovery-parser";
 import {
   SKIP_REASON_LABELS,
   type SkipReason,
@@ -22,7 +21,6 @@ import type { Confidence, FixStep, FixType, ScanIssueRow, Tool } from "@/types";
 interface IssueCardProps {
   issue: ScanIssueRow;
   tool: Tool;
-  discoveryResponse?: string | null;
   isFixed?: boolean;
   onToggleFixed?: () => void;
   isSkipped?: boolean;
@@ -43,10 +41,14 @@ const TOGGLE_BTN =
 
 const SKIP_REASONS: SkipReason[] = ["break", "not_relevant", "later"];
 
-function buildAskToolPrompt(issue: ScanIssueRow, stackSummary: string): string {
+function buildStackSummary(tool?: Tool | null): string {
+  return tool ? `Built with ${tool}` : "Stack unknown";
+}
+
+function buildAskToolPrompt(issue: ScanIssueRow, tool?: Tool | null): string {
   return `I have a security issue in my app:
 ${issue.issue_name}: ${issue.description}
-My stack: ${stackSummary}
+${buildStackSummary(tool)}
 Please fix this issue in my codebase without breaking my existing setup.`;
 }
 
@@ -215,7 +217,6 @@ function TerminalFixDisplay({
 export function IssueCard({
   issue,
   tool,
-  discoveryResponse,
   isFixed = false,
   onToggleFixed,
   isSkipped = false,
@@ -224,7 +225,7 @@ export function IssueCard({
   onUnskip,
   collapsedByDefault = false,
 }: IssueCardProps) {
-  const stackSummary = extractStackSummaryFromDiscovery(discoveryResponse, tool);
+  const askToolPrompt = buildAskToolPrompt(issue, tool);
   const [cardExpanded, setCardExpanded] = useState(!collapsedByDefault);
   const [fixExpanded, setFixExpanded] = useState(false);
   const [evidenceExpanded, setEvidenceExpanded] = useState(false);
@@ -245,7 +246,6 @@ export function IssueCard({
   const steps = issue.fix_steps ?? [];
   const singleFixType = resolveFixType(issue);
   const isUncertainFix = issue.fix_confidence === "uncertain";
-  const askToolPrompt = buildAskToolPrompt(issue, stackSummary);
   const severityKey = issue.severity.toLowerCase();
 
   useEffect(() => {

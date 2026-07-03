@@ -19,7 +19,6 @@ interface PillarIssueGroupProps {
   issues: ScanIssueRow[];
   pillarScores: PillarScores;
   tool: Tool;
-  discoveryResponse?: string | null;
   fixedIssueIds: string[];
   skippedIssueIds: string[];
   isOpen: boolean;
@@ -89,7 +88,6 @@ export function PillarIssueGroup({
   issues,
   pillarScores,
   tool,
-  discoveryResponse,
   fixedIssueIds,
   skippedIssueIds,
   isOpen,
@@ -153,7 +151,6 @@ export function PillarIssueGroup({
                 key={issue.id}
                 issue={issue}
                 tool={tool}
-                discoveryResponse={discoveryResponse}
                 isFixed={fixedIssueIds.includes(issue.id)}
                 onToggleFixed={() => onToggleFixed(issue.id)}
                 onSkip={(reason) => onSkipIssue(issue.id, reason)}
