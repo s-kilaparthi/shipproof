@@ -727,7 +727,7 @@ export function IssueCard({
               </button>
 
               {showSkipMenu ? (
-                <div className="absolute right-0 top-full z-10 mt-1 w-56 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
+                <div className="absolute bottom-full right-0 z-10 mb-1 w-56 rounded-lg border border-gray-200 bg-white p-3 dark:border-gray-700 dark:bg-gray-900">
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">
                     Why are you skipping this?
                   </p>
