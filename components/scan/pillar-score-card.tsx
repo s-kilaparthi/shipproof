@@ -23,11 +23,11 @@ function getScoreTextColor(
   displayScore: string
 ): string {
   if (confidence === "insufficient" || displayScore === "—") {
-    return "text-gray-400";
+    return "text-gray-300";
   }
   if (numericScore < 50) return "text-red-500";
   if (numericScore <= 79) return "text-amber-500";
-  return "text-green-600 dark:text-green-400";
+  return "text-gray-900 dark:text-white";
 }
 
 export function PillarScoreCard({
@@ -47,14 +47,14 @@ export function PillarScoreCard({
       type="button"
       onClick={onClick}
       title={tooltip}
-      className="border border-gray-100 bg-transparent p-3 text-left transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-900/30 sm:p-4"
+      className="w-full rounded-xl border border-gray-900 bg-white p-4 text-left transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/80"
     >
-      <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+      <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-400">
         {label}
       </p>
       <p
         className={cn(
-          "mt-1 text-xl font-bold",
+          "text-3xl font-bold",
           getScoreTextColor(numericScore, detail.confidence, displayScore)
         )}
       >
@@ -62,7 +62,11 @@ export function PillarScoreCard({
       </p>
       {hint ? (
         <p className="mt-1 text-xs text-gray-400">{hint}</p>
-      ) : null}
+      ) : (
+        <p className="mt-1 text-xs text-transparent select-none" aria-hidden>
+          —
+        </p>
+      )}
     </button>
   );
 }

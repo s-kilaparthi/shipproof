@@ -49,60 +49,58 @@ export function DiscoveryPrompt({
   };
 
   return (
-    <Card className="flex h-full min-h-0 flex-col shadow-none">
-      <CardHeader className="shrink-0 space-y-1 pb-3">
+    <Card className="shadow-none">
+      <CardHeader className="space-y-1 pb-3">
         <CardTitle className="text-lg">Discovery prompt</CardTitle>
         <p className="text-sm text-muted-foreground">
           Run this prompt in {selectedTool} and paste the response below.
         </p>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-3 p-4 pt-0">
-        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-medium">Copy this prompt</p>
-              <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
-                {copied ? (
-                  <>
-                    <Check className="size-4" />
-                    Copied
-                  </>
-                ) : (
-                  <>
-                    <Copy className="size-4" />
-                    Copy prompt
-                  </>
-                )}
-              </Button>
-            </div>
-            <pre className="max-h-32 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
-              {DISCOVERY_PROMPT}
-            </pre>
+      <CardContent className="space-y-3 p-4 pt-0">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-medium">Copy this prompt</p>
+            <Button type="button" variant="outline" size="sm" onClick={handleCopy}>
+              {copied ? (
+                <>
+                  <Check className="size-4" />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Copy className="size-4" />
+                  Copy prompt
+                </>
+              )}
+            </Button>
           </div>
-
-          <div className="space-y-1.5">
-            <label htmlFor="discovery-response" className="text-sm font-medium">
-              Paste the response from {selectedTool}
-            </label>
-            <Textarea
-              id="discovery-response"
-              placeholder={`Paste the response from ${selectedTool} here...`}
-              value={discoveryResponse}
-              onChange={(e) => onResponseChange(e.target.value)}
-              disabled={isSubmitting}
-              className="h-32 resize-none"
-            />
-          </div>
-
-          {isSubmitting && (
-            <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 py-4 text-sm text-muted-foreground dark:border-gray-800 dark:bg-gray-900/50">
-              <Loader2 className="size-4 animate-spin" />
-              Scanning your codebase...
-            </div>
-          )}
+          <pre className="max-h-32 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-900">
+            {DISCOVERY_PROMPT}
+          </pre>
         </div>
 
-        <div className="flex shrink-0 justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
+        <div className="space-y-1.5">
+          <label htmlFor="discovery-response" className="text-sm font-medium">
+            Paste the response from {selectedTool}
+          </label>
+          <Textarea
+            id="discovery-response"
+            placeholder={`Paste the response from ${selectedTool} here...`}
+            value={discoveryResponse}
+            onChange={(e) => onResponseChange(e.target.value)}
+            disabled={isSubmitting}
+            className="h-32 resize-none"
+          />
+        </div>
+
+        {isSubmitting && (
+          <div className="flex items-center justify-center gap-2 rounded-lg border border-gray-200 bg-gray-50 py-4 text-sm text-muted-foreground dark:border-gray-800 dark:bg-gray-900/50">
+            <Loader2 className="size-4 animate-spin" />
+            Scanning your codebase...
+          </div>
+        )}
+
+        <div className="mt-4 flex justify-between">
           <Button
             type="button"
             variant="outline"

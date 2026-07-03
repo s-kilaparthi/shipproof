@@ -2,8 +2,8 @@ import { ScanWizard } from "@/components/scan/scan-wizard";
 
 export default function NewScanPage() {
   return (
-    <main className="mx-auto flex h-[calc(100dvh-2rem)] max-w-3xl flex-col overflow-hidden px-4 py-4 sm:px-6">
-      <div className="mb-4 shrink-0">
+    <main className="mx-auto max-w-3xl px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mb-4">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           New Scan
         </h1>
@@ -12,9 +12,7 @@ export default function NewScanPage() {
         </p>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <ScanWizard />
-      </div>
+      <ScanWizard />
     </main>
   );
 }

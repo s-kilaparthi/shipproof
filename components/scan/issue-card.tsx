@@ -38,7 +38,7 @@ interface IssueCardProps {
 }
 
 const CARD_CLASS =
-  "rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-800 dark:bg-gray-900";
+  "rounded-xl border border-gray-900 bg-white p-4 dark:border-gray-800 dark:bg-gray-900";
 
 const CODE_BLOCK =
   "max-h-64 overflow-x-auto rounded border border-gray-200 bg-gray-50 p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap dark:border-gray-700 dark:bg-gray-950";
