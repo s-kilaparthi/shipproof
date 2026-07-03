@@ -3,6 +3,7 @@
 import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const LOADING_STEPS = [
@@ -14,13 +15,19 @@ const LOADING_STEPS = [
 
 interface ScanLoadingProps {
   isActive: boolean;
+  serviceUnavailable?: boolean;
+  onTryAgain?: () => void;
 }
 
-export function ScanLoading({ isActive }: ScanLoadingProps) {
+export function ScanLoading({
+  isActive,
+  serviceUnavailable = false,
+  onTryAgain,
+}: ScanLoadingProps) {
   const [activeStep, setActiveStep] = useState(0);
 
   useEffect(() => {
-    if (!isActive) {
+    if (!isActive || serviceUnavailable) {
       setActiveStep(0);
       return;
     }
@@ -32,9 +39,34 @@ export function ScanLoading({ isActive }: ScanLoadingProps) {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isActive]);
+  }, [isActive, serviceUnavailable]);
 
-  if (!isActive) return null;
+  if (!isActive && !serviceUnavailable) return null;
+
+  if (serviceUnavailable) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+        <div className="mx-4 w-full max-w-md rounded-xl border-2 border-gray-900 bg-card p-8 text-center shadow-lg dark:border-white">
+          <h2 className="text-xl font-semibold text-foreground">
+            Scan temporarily unavailable
+          </h2>
+          <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+            Our scanning service is experiencing high demand. Please try again
+            in a few minutes.
+          </p>
+          {onTryAgain ? (
+            <Button
+              type="button"
+              className="mt-6 h-11 w-full bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100 sm:w-auto sm:px-8"
+              onClick={onTryAgain}
+            >
+              Try Again
+            </Button>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">

@@ -2,7 +2,7 @@ import { createOctokit } from "@/lib/github";
 import { getGitHubToken, requireUser } from "@/lib/auth";
 import { scanIpRatelimit, scanRatelimit } from "@/lib/ratelimit";
 import { createServerClient } from "@/lib/supabase/server";
-import { runFullScan } from "@/lib/scan/analyzer";
+import { CREDITS_EXHAUSTED_ERROR, runFullScan } from "@/lib/scan/analyzer";
 import { formatFilesAsMarkdown } from "@/lib/scan/code-cleaner";
 import { parseDiscoveryResponse } from "@/lib/scan/discovery-parser";
 import { pickFreePreviewIndex } from "@/lib/scan/free-tier";
@@ -241,6 +241,38 @@ export async function POST(request: Request) {
       used_cached_discovery: useCachedDiscovery,
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message === CREDITS_EXHAUSTED_ERROR) {
+      console.error(
+        "🚨 SHIPPROOF CREDITS EXHAUSTED 🚨 - Top up Anthropic credits immediately"
+      );
+
+      if (scanId) {
+        try {
+          const supabase = createServerClient();
+          await supabase
+            .from("scans")
+            .update({
+              status: "failed",
+              error_message: "service_unavailable",
+            })
+            .eq("id", scanId);
+        } catch {
+          // ignore
+        }
+      }
+
+      return Response.json(
+        {
+          error: "service_unavailable",
+          message:
+            "Our scanning service is temporarily unavailable. Please try again in a few minutes.",
+        },
+        { status: 503 }
+      );
+    }
+
     console.error("[scan/analyze] Unexpected error:", error);
 
     if (scanId) {
@@ -255,7 +287,7 @@ export async function POST(request: Request) {
     return Response.json(
       {
         error: "Analysis failed",
-        details: error instanceof Error ? error.message : String(error),
+        details: message,
       },
       { status: 500 }
     );

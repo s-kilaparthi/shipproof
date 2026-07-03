@@ -176,6 +176,7 @@ export interface Scan {
   overall_score?: number | null;
   pillar_scores?: PillarScores | null;
   is_limited?: boolean | null;
+  error_message?: string | null;
   created_at: string;
   completed_at?: string | null;
   result?: ScanResult;

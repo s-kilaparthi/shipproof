@@ -105,6 +105,10 @@ function ScanWizardContent() {
   const [currentStepId, setCurrentStepId] = useState<WizardStepId>("repo");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
+  const [retryScanState, setRetryScanState] = useState<ScanFormState | null>(
+    null
+  );
   const [discoveryLoading, setDiscoveryLoading] = useState(false);
   const [discoveryStatus, setDiscoveryStatus] =
     useState<DiscoveryStatusResponse | null>(null);
@@ -153,6 +157,9 @@ function ScanWizardContent() {
 
       setIsSubmitting(true);
       setIsAnalyzing(true);
+      setServiceUnavailable(false);
+      setRetryScanState(state);
+      let keepOverlayForUnavailable = false;
 
       try {
         const createResponse = await fetch("/api/scan/create", {
@@ -211,9 +218,20 @@ function ScanWizardContent() {
         const analyzeData = (await analyzeResponse.json()) as AnalyzeScanResponse & {
           error?: string;
           details?: string;
+          message?: string;
         };
 
         if (!analyzeResponse.ok) {
+          if (
+            analyzeResponse.status === 503 &&
+            analyzeData.error === "service_unavailable"
+          ) {
+            keepOverlayForUnavailable = true;
+            setServiceUnavailable(true);
+            setIsAnalyzing(false);
+            return;
+          }
+
           throw new Error(
             [analyzeData.error, analyzeData.details].filter(Boolean).join(" — ") ||
               "Failed to analyze scan"
@@ -229,6 +247,7 @@ function ScanWizardContent() {
         toast.error(
           error instanceof Error ? error.message : "Failed to start scan"
         );
+        setServiceUnavailable(false);
         setCurrentStepId(
           state.useCachedDiscovery
             ? "rescan-mode"
@@ -240,11 +259,19 @@ function ScanWizardContent() {
         );
       } finally {
         setIsSubmitting(false);
-        setIsAnalyzing(false);
+        if (!keepOverlayForUnavailable) {
+          setIsAnalyzing(false);
+        }
       }
     },
     [router]
   );
+
+  const handleTryAgain = useCallback(() => {
+    if (!retryScanState) return;
+    setServiceUnavailable(false);
+    void runScan(retryScanState);
+  }, [retryScanState, runScan]);
 
   useEffect(() => {
     if (!formState.selectedRepo) {
@@ -400,13 +427,16 @@ function ScanWizardContent() {
     await runScan(formState);
   };
 
-  const stepIndicatorId: WizardStepDisplayId = isAnalyzing
-    ? "scanning"
-    : currentStepId;
+  const stepIndicatorId: WizardStepDisplayId =
+    isAnalyzing || serviceUnavailable ? "scanning" : currentStepId;
 
   return (
     <>
-      <ScanLoading isActive={isAnalyzing} />
+      <ScanLoading
+        isActive={isAnalyzing}
+        serviceUnavailable={serviceUnavailable}
+        onTryAgain={handleTryAgain}
+      />
 
       <div>
         <StepIndicator steps={wizardSteps} currentStepId={stepIndicatorId} />
