@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ScanSearch } from "lucide-react";
+import { ScanSearch, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 
 import { OnboardingWelcome } from "@/components/dashboard/onboarding-welcome";
@@ -31,6 +31,24 @@ function getFirstName(user: {
   return "there";
 }
 
+function DashboardTopBar() {
+  return (
+    <header className="fixed inset-x-0 top-0 z-50 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-3 dark:border-gray-800 dark:bg-black sm:hidden">
+      <Link
+        href="/dashboard"
+        className="flex items-center gap-1.5 text-sm font-bold tracking-tight text-foreground"
+      >
+        <ShieldCheck className="size-5" />
+        ShipProof
+      </Link>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <SignOutButton iconOnly />
+      </div>
+    </header>
+  );
+}
+
 export default async function DashboardPage() {
   const supabase = createServerClient();
   const {
@@ -49,12 +67,15 @@ export default async function DashboardPage() {
 
   if (!scans || scans.length === 0) {
     return (
-      <main className="min-h-screen bg-background">
-        <div className="absolute right-4 top-4 flex items-center gap-2 sm:right-6 sm:top-6">
+      <main className="min-h-screen overflow-x-hidden bg-background">
+        <DashboardTopBar />
+        <div className="absolute right-4 top-4 hidden items-center gap-2 sm:flex sm:right-6 sm:top-6">
           <ThemeToggle />
           <SignOutButton />
         </div>
-        <OnboardingWelcome firstName={getFirstName(user)} />
+        <div className="pt-14 sm:pt-0">
+          <OnboardingWelcome firstName={getFirstName(user)} />
+        </div>
       </main>
     );
   }
@@ -129,30 +150,36 @@ export default async function DashboardPage() {
   }));
 
   return (
-    <main className="mx-auto max-w-6xl bg-background px-4 py-12 sm:px-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Welcome to ShipProof
-          </h1>
-          <p className="mt-2 text-muted-foreground">{user.email}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <ThemeToggle />
-          <SignOutButton />
-        </div>
-      </div>
+    <main className="min-h-screen overflow-x-hidden bg-background">
+      <DashboardTopBar />
 
-      <div className="mt-8">
-        <Link href="/scan/new">
-          <Button className="gap-2">
-            <ScanSearch className="size-4" />
-            Start New Scan
-          </Button>
-        </Link>
-      </div>
+      <div className="mx-auto max-w-6xl px-4 pb-12 pt-16 sm:px-6 sm:pt-12">
+        <div className="flex min-w-0 items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Welcome to ShipProof
+            </h1>
+            <p className="mt-2 truncate text-sm text-muted-foreground">
+              {user.email}
+            </p>
+          </div>
+          <div className="hidden shrink-0 items-center gap-2 sm:flex">
+            <ThemeToggle />
+            <SignOutButton />
+          </div>
+        </div>
 
-      <ScanHistory repoGroups={scanHistoryGroups} />
+        <div className="mt-8">
+          <Link href="/scan/new" className="block w-full sm:inline-block sm:w-auto">
+            <Button className="w-full gap-2 sm:w-auto">
+              <ScanSearch className="size-4" />
+              Start New Scan
+            </Button>
+          </Link>
+        </div>
+
+        <ScanHistory repoGroups={scanHistoryGroups} />
+      </div>
     </main>
   );
 }

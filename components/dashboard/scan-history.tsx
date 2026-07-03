@@ -81,10 +81,132 @@ function ConfirmDialog({
   );
 }
 
+function ScanCard({
+  item,
+  repoName,
+  canQuickRescan,
+  onDelete,
+}: {
+  item: ScanHistoryItem;
+  repoName: string;
+  canQuickRescan: boolean;
+  onDelete: (scanId: string) => void;
+}) {
+  const { scan, issueCount, pillarScores } = item;
+  const rescanMode = canQuickRescan ? "quick" : "full";
+  const rescanLabel = canQuickRescan ? "Quick Rescan" : "Rescan";
+
+  return (
+    <Card className="group relative min-w-0 overflow-hidden border border-gray-200 ring-0 dark:border-gray-800">
+      <button
+        type="button"
+        aria-label="Delete scan"
+        className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+        onClick={() => onDelete(scan.id)}
+      >
+        <Trash2 className="size-4" />
+      </button>
+
+      <CardContent className="flex min-w-0 flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0 space-y-2 pr-8">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{scan.tool_selected as Tool}</Badge>
+            <Badge
+              variant={
+                scan.status === "completed"
+                  ? "secondary"
+                  : scan.status === "failed"
+                    ? "destructive"
+                    : "outline"
+              }
+            >
+              {scan.status}
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {new Date(scan.created_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+            })}
+            {issueCount > 0 && (
+              <>
+                {" "}
+                · {issueCount} issue{issueCount === 1 ? "" : "s"}
+                <FixedIssueCount scanId={scan.id} />
+              </>
+            )}
+          </p>
+          {scan.status === "completed" && (
+            <div className="flex items-center gap-1.5 pl-2">
+              {DISPLAY_PILLARS.map(({ id, label }) => (
+                <span
+                  key={id}
+                  title={`${label}: ${getPillarDisplayScore(pillarScores[id])}`}
+                  className={`size-2.5 shrink-0 rounded-full ${getPillarDotColor(pillarScores[id])}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
+          {scan.status === "completed" && (
+            <div className={getDashboardScoreBadgeClass(pillarScores.overall)}>
+              {pillarScores.overall}
+            </div>
+          )}
+          {scan.status === "completed" ? (
+            <>
+              <Link href={`/scan/${scan.id}/report`}>
+                <Button variant="outline" size="sm">
+                  View Report
+                </Button>
+              </Link>
+              <Link
+                href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${rescanMode}`}
+                onClick={() => clearFixedIssues(scan.id)}
+              >
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  {canQuickRescan ? (
+                    <Zap className="size-3.5" />
+                  ) : (
+                    <RefreshCw className="size-3.5" />
+                  )}
+                  {rescanLabel}
+                </Button>
+              </Link>
+            </>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              {scan.status === "scanning" ? "Scanning..." : "View Report"}
+            </Button>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function ScanHistory({ repoGroups }: ScanHistoryProps) {
   const router = useRouter();
   const [confirm, setConfirm] = useState<ConfirmState | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [expandedRepos, setExpandedRepos] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (repoName: string) => {
+    setExpandedRepos((current) => {
+      const next = new Set(current);
+      if (next.has(repoName)) {
+        next.delete(repoName);
+      } else {
+        next.add(repoName);
+      }
+      return next;
+    });
+  };
 
   const deleteScan = async (scanId: string) => {
     const res = await fetch(`/api/scan/${scanId}`, { method: "DELETE" });
@@ -135,134 +257,66 @@ export function ScanHistory({ repoGroups }: ScanHistoryProps) {
         isDeleting={isDeleting}
       />
 
-      <div className="mt-12 space-y-8">
+      <div className="mt-12 min-w-0 space-y-8">
         <h2 className="text-lg font-semibold text-foreground">Scan History</h2>
         {repoGroups.map(({ repoName, scans, canQuickRescan }) => {
-          const rescanMode = canQuickRescan ? "quick" : "full";
-          const rescanLabel = canQuickRescan ? "Quick Rescan" : "Rescan";
+          const isExpanded = expandedRepos.has(repoName);
+          const latestScan = scans[0];
+          const visibleScans = isExpanded ? scans : latestScan ? [latestScan] : [];
 
           return (
-            <div key={repoName} className="space-y-3">
-              <div className="flex items-center justify-between gap-4">
-                <h3 className="font-semibold text-foreground">{repoName}</h3>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm text-muted-foreground">
-                    {scans.length} scan{scans.length === 1 ? "" : "s"}
-                  </span>
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-                    onClick={() =>
-                      setConfirm({
-                        type: "repo",
-                        repoName,
-                        scanCount: scans.length,
-                      })
-                    }
-                  >
-                    Clear all
-                  </button>
-                </div>
+            <div key={repoName} className="min-w-0 space-y-3">
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <h3 className="min-w-0 truncate font-semibold text-foreground">
+                  {repoName}
+                </h3>
+                <span className="shrink-0 text-sm text-muted-foreground">
+                  {scans.length} scan{scans.length === 1 ? "" : "s"} total
+                </span>
               </div>
-              <div className="grid gap-3">
-                {scans.map(({ scan, issueCount, pillarScores }) => (
-                  <Card
-                    key={scan.id}
-                    className="group relative border border-gray-200 ring-0 dark:border-gray-800"
-                  >
-                    <button
-                      type="button"
-                      aria-label="Delete scan"
-                      className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
-                      onClick={() =>
-                        setConfirm({ type: "single", scanId: scan.id })
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                    </button>
 
-                    <CardContent className="flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="space-y-2 pr-8">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge variant="outline">{scan.tool_selected as Tool}</Badge>
-                          <Badge
-                            variant={
-                              scan.status === "completed"
-                                ? "secondary"
-                                : scan.status === "failed"
-                                  ? "destructive"
-                                  : "outline"
-                            }
-                          >
-                            {scan.status}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(scan.created_at).toLocaleDateString(undefined, {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                          {issueCount > 0 && (
-                            <>
-                              {" "}
-                              · {issueCount} issue{issueCount === 1 ? "" : "s"}
-                              <FixedIssueCount scanId={scan.id} />
-                            </>
-                          )}
-                        </p>
-                        {scan.status === "completed" && (
-                          <div className="flex items-center gap-1.5 pl-2">
-                            {DISPLAY_PILLARS.map(({ id, label }) => (
-                              <span
-                                key={id}
-                                title={`${label}: ${getPillarDisplayScore(pillarScores[id])}`}
-                                className={`size-2.5 shrink-0 rounded-full ${getPillarDotColor(pillarScores[id])}`}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                        {scan.status === "completed" && (
-                          <div className={getDashboardScoreBadgeClass(pillarScores.overall)}>
-                            {pillarScores.overall}
-                          </div>
-                        )}
-                        {scan.status === "completed" ? (
-                          <>
-                            <Link href={`/scan/${scan.id}/report`}>
-                              <Button variant="outline" size="sm">
-                                View Report
-                              </Button>
-                            </Link>
-                            <Link
-                              href={`/scan/new?repo=${encodeURIComponent(repoName)}&mode=${rescanMode}`}
-                              onClick={() => clearFixedIssues(scan.id)}
-                            >
-                              <Button variant="outline" size="sm" className="gap-1.5">
-                                {canQuickRescan ? (
-                                  <Zap className="size-3.5" />
-                                ) : (
-                                  <RefreshCw className="size-3.5" />
-                                )}
-                                {rescanLabel}
-                              </Button>
-                            </Link>
-                          </>
-                        ) : (
-                          <Button variant="outline" size="sm" disabled>
-                            {scan.status === "scanning" ? "Scanning..." : "View Report"}
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
+              <div className="grid min-w-0 gap-3">
+                {visibleScans.map((item) => (
+                  <ScanCard
+                    key={item.scan.id}
+                    item={item}
+                    repoName={repoName}
+                    canQuickRescan={canQuickRescan}
+                    onDelete={(scanId) =>
+                      setConfirm({ type: "single", scanId })
+                    }
+                  />
                 ))}
               </div>
+
+              {scans.length > 1 ? (
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                  <button
+                    type="button"
+                    className="text-xs text-gray-500 underline underline-offset-2 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                    onClick={() => toggleExpanded(repoName)}
+                  >
+                    {isExpanded
+                      ? "Hide scans"
+                      : `View all ${scans.length} scans →`}
+                  </button>
+                  {isExpanded ? (
+                    <button
+                      type="button"
+                      className="text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline dark:text-gray-500 dark:hover:text-gray-400"
+                      onClick={() =>
+                        setConfirm({
+                          type: "repo",
+                          repoName,
+                          scanCount: scans.length,
+                        })
+                      }
+                    >
+                      Clear all
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           );
         })}

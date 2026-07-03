@@ -6,8 +6,14 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { createBrowserClient } from "@/lib/supabase/client";
+import { cn } from "@/lib/utils";
 
-export function SignOutButton() {
+interface SignOutButtonProps {
+  iconOnly?: boolean;
+  className?: string;
+}
+
+export function SignOutButton({ iconOnly = false, className }: SignOutButtonProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -19,12 +25,28 @@ export function SignOutButton() {
     router.refresh();
   };
 
+  if (iconOnly) {
+    return (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={cn("size-9", className)}
+        onClick={handleSignOut}
+        disabled={loading}
+        aria-label={loading ? "Signing out" : "Sign out"}
+      >
+        <LogOut className="size-4" />
+      </Button>
+    );
+  }
+
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      className="gap-2"
+      className={cn("gap-2", className)}
       onClick={handleSignOut}
       disabled={loading}
     >

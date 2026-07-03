@@ -17,6 +17,15 @@ interface PillarScoreCardProps {
   onClick?: () => void;
 }
 
+const PILLAR_ABBREV: Record<DisplayPillar, string> = {
+  security: "SEC",
+  database: "DB",
+  performance: "PERF",
+  reliability: "REL",
+  observability: "OBS",
+  devops: "OPS",
+};
+
 function getScoreTextColor(
   numericScore: number,
   confidence: string,
@@ -41,16 +50,18 @@ export function PillarScoreCard({
   const numericScore = getPillarNumericScore(detail);
   const hint = getPillarConfidenceHint(detail.confidence);
   const tooltip = getPillarConfidenceLabel(detail.confidence);
+  const abbrev = PILLAR_ABBREV[pillarId];
 
   return (
     <button
       type="button"
       onClick={onClick}
       title={tooltip}
-      className="w-full rounded-xl border border-gray-900 bg-white p-4 text-left transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/80"
+      className="min-w-0 w-full overflow-hidden rounded-xl border border-gray-900 bg-white p-3 text-left transition-colors hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800/80 sm:p-4"
     >
-      <p className="mb-1 text-xs font-medium uppercase tracking-widest text-gray-400">
-        {label}
+      <p className="mb-1 truncate text-xs font-medium uppercase tracking-widest text-gray-400">
+        <span className="sm:hidden">{abbrev}</span>
+        <span className="hidden sm:inline">{label}</span>
       </p>
       <p
         className={cn(
@@ -61,7 +72,7 @@ export function PillarScoreCard({
         {displayScore}
       </p>
       {hint ? (
-        <p className="mt-1 text-xs text-gray-400">{hint}</p>
+        <p className="mt-1 truncate text-xs text-gray-400">{hint}</p>
       ) : (
         <p className="mt-1 text-xs text-transparent select-none" aria-hidden>
           —

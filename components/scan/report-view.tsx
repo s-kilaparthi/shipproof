@@ -303,7 +303,7 @@ export function ReportView({
       </div>
 
       {/* 2. Pillar score cards */}
-      <div className="mb-8 grid grid-cols-3 gap-3 sm:grid-cols-6">
+      <div className="mb-8 grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-6">
         {DISPLAY_PILLARS.map(({ id, label }) => (
           <PillarScoreCard
             key={id}
