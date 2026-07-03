@@ -1,14 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Check } from "lucide-react";
 
 import { FadeIn } from "@/components/landing/motion";
 import { WaitlistForm } from "@/components/landing/waitlist-form";
 import { Button } from "@/components/ui/button";
+import { createBrowserClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import type { ScanLimitResponse } from "@/types";
 
 const FREE_FEATURES = [
   "1 free scan",
@@ -29,19 +31,83 @@ const LAUNCH_FEATURES = [
 interface PricingSectionProps {
   showHeading?: boolean;
   className?: string;
+  /** When true, loads auth + scan-limit for personalized CTAs */
+  authAware?: boolean;
 }
 
 export function PricingSection({
   showHeading = true,
   className,
+  authAware = false,
 }: PricingSectionProps) {
   const waitlistRef = useRef<HTMLDivElement>(null);
   const [waitlistPlan, setWaitlistPlan] = useState<"launch" | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [canScan, setCanScan] = useState(true);
+  const [ready, setReady] = useState(!authAware);
+
+  useEffect(() => {
+    if (!authAware) return;
+
+    let cancelled = false;
+
+    async function loadAuthState() {
+      try {
+        const supabase = createBrowserClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (cancelled) return;
+
+        if (!user) {
+          setIsAuthenticated(false);
+          setUserEmail(null);
+          setCanScan(true);
+          setReady(true);
+          return;
+        }
+
+        setIsAuthenticated(true);
+        setUserEmail(user.email ?? null);
+
+        const response = await fetch("/api/user/scan-limit");
+        if (cancelled) return;
+
+        if (response.ok) {
+          const limit = (await response.json()) as ScanLimitResponse;
+          setCanScan(limit.can_scan);
+        } else {
+          setCanScan(true);
+        }
+      } catch {
+        if (!cancelled) {
+          setIsAuthenticated(false);
+          setUserEmail(null);
+          setCanScan(true);
+        }
+      } finally {
+        if (!cancelled) setReady(true);
+      }
+    }
+
+    loadAuthState();
+    return () => {
+      cancelled = true;
+    };
+  }, [authAware]);
 
   const scrollToWaitlist = (plan: "launch" | null) => {
     setWaitlistPlan(plan);
     waitlistRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   };
+
+  const freeScanUsed = isAuthenticated && !canScan;
+  const freeScanHref = isAuthenticated ? "/dashboard" : "/login";
+  const launchButtonLabel = freeScanUsed
+    ? "Join Waitlist — Get notified at launch"
+    : "Join Waitlist";
 
   return (
     <div className={cn("mx-auto max-w-6xl", className)}>
@@ -78,14 +144,35 @@ export function PricingSection({
                 </li>
               ))}
             </ul>
-            <Link href="/login" className="mt-6 block">
-              <Button
-                variant="outline"
-                className="h-11 w-full border-gray-900 text-foreground hover:bg-muted dark:border-gray-100"
-              >
-                Start Free Scan
-              </Button>
-            </Link>
+
+            <div className="mt-6">
+              {!ready ? (
+                <div className="h-11 w-full animate-pulse rounded-lg bg-muted" />
+              ) : freeScanUsed ? (
+                <div className="space-y-3">
+                  <p className="text-center text-sm font-medium text-green-600 dark:text-green-500">
+                    ✓ Free scan used
+                  </p>
+                  <Link href="/dashboard" className="block">
+                    <Button
+                      variant="outline"
+                      className="h-11 w-full border-gray-900 text-foreground hover:bg-muted dark:border-gray-100"
+                    >
+                      View Your Report →
+                    </Button>
+                  </Link>
+                </div>
+              ) : (
+                <Link href={freeScanHref} className="block">
+                  <Button
+                    variant="outline"
+                    className="h-11 w-full border-gray-900 text-foreground hover:bg-muted dark:border-gray-100"
+                  >
+                    Start Free Scan
+                  </Button>
+                </Link>
+              )}
+            </div>
           </motion.div>
         </FadeIn>
 
@@ -119,7 +206,7 @@ export function PricingSection({
               onClick={() => scrollToWaitlist("launch")}
               className="mt-6 h-11 w-full bg-gray-900 text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
             >
-              Join Waitlist
+              {ready ? launchButtonLabel : "Join Waitlist"}
             </Button>
           </motion.div>
         </FadeIn>
@@ -141,9 +228,12 @@ export function PricingSection({
           <div className="mx-auto mt-6 max-w-lg">
             <WaitlistForm
               plan={waitlistPlan}
+              defaultEmail={userEmail ?? ""}
               planLabel={
                 waitlistPlan === "launch"
-                  ? "Joining waitlist for Launch ($9 one-time)"
+                  ? freeScanUsed
+                    ? "Join Waitlist — Get notified at launch"
+                    : "Joining waitlist for Launch ($9 one-time)"
                   : undefined
               }
             />

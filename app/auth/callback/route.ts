@@ -63,7 +63,7 @@ export async function GET(request: Request) {
           error.code
         );
         return NextResponse.redirect(
-          `${origin}/login?error=auth&reason=${error.code || "unknown"}`
+          `${origin}/login?error=auth`
         );
       }
 
@@ -72,7 +72,7 @@ export async function GET(request: Request) {
     } catch (err) {
       console.error("[auth/callback] Unexpected error:", err);
       return NextResponse.redirect(
-        `${origin}/login?error=auth&reason=unexpected`
+        `${origin}/login?error=auth`
       );
     }
   }

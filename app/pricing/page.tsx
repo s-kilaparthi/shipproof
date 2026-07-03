@@ -19,7 +19,7 @@ export default function PricingPage() {
           </p>
         </div>
         <div className="mx-auto mt-16 max-w-4xl px-0 sm:px-2">
-          <PricingSection showHeading={false} />
+          <PricingSection showHeading={false} authAware />
         </div>
       </section>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ interface WaitlistFormProps {
   planLabel?: string;
   className?: string;
   onSuccess?: () => void;
+  /** Pre-fill email for logged-in users */
+  defaultEmail?: string;
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -25,11 +27,18 @@ export function WaitlistForm({
   planLabel,
   className,
   onSuccess,
+  defaultEmail = "",
 }: WaitlistFormProps) {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(defaultEmail);
   const [loading, setLoading] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [status, setStatus] = useState<FormStatus>({ type: "idle" });
+
+  useEffect(() => {
+    if (defaultEmail) {
+      setEmail(defaultEmail);
+    }
+  }, [defaultEmail]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
