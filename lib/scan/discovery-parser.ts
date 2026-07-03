@@ -102,6 +102,7 @@ export function parseDiscoveryResponse(discoveryResponse: string): ParsedDiscove
   const raw = discoveryResponse.trim();
 
   const techStackRaw = extractSection(raw, [
+    /(?:^|\n)#+\s*PILLAR\s*1(?:\s*[—\-–]\s*IDENTITY)?[^\n]*\n([\s\S]*?)(?=\n#+\s*PILLAR\s*(?:[2-9]|[IVXLC]+)\b|\n##\s*PILLAR\s*[2-9]|\Z)/i,
     /(?:1\.?\s*)?tech\s*stack[:\s]*([\s\S]*?)(?=\n\s*\d+\.|$)/i,
     /frontend[^:]*:[^\n]*([\s\S]*?)(?=\n\s*\d+\.|$)/i,
   ]);
@@ -129,11 +130,16 @@ export function parseDiscoveryResponse(discoveryResponse: string): ParsedDiscove
 
   const techStack = {
     raw: techStackRaw || raw.slice(0, 500),
-    frontend: techStackRaw.match(/frontend[:\s]*([^\n,]+)/i)?.[1]?.trim(),
-    backend: techStackRaw.match(/backend[:\s]*([^\n,]+)/i)?.[1]?.trim(),
-    database: techStackRaw.match(/database[:\s]*([^\n,]+)/i)?.[1]?.trim(),
+    frontend:
+      techStackRaw.match(
+        /(?:frontend\s*(?:framework)?|primary language and frameworks(?: with exact versions)?)[:\s—–-]+([^\n]+)/i
+      )?.[1]?.trim() ??
+      techStackRaw.match(/frontend[:\s]*([^\n,]+)/i)?.[1]?.trim(),
+    backend: techStackRaw.match(/backend[:\s—–-]+([^\n]+)/i)?.[1]?.trim(),
+    database: techStackRaw.match(/database[:\s—–-]+([^\n]+)/i)?.[1]?.trim(),
     auth: techStackRaw.match(/auth[:\s]*([^\n,]+)/i)?.[1]?.trim(),
-    hosting: techStackRaw.match(/hosting[:\s]*([^\n,]+)/i)?.[1]?.trim(),
+    hosting:
+      techStackRaw.match(/hosting(?:\s*platforms?(?:\s*used)?)?[:\s—–-]+([^\n]+)/i)?.[1]?.trim(),
   };
 
   return {
@@ -150,30 +156,85 @@ export function parseDiscoveryResponse(discoveryResponse: string): ParsedDiscove
 
 export function formatStackSummary(parsed: ParsedDiscovery): string {
   const parts = [
-    parsed.techStack.frontend && `framework: ${parsed.techStack.frontend}`,
-    parsed.techStack.database && `database: ${parsed.techStack.database}`,
-    parsed.techStack.hosting && `hosting: ${parsed.techStack.hosting}`,
-    parsed.techStack.backend &&
-      !parsed.techStack.frontend &&
-      `backend: ${parsed.techStack.backend}`,
+    parsed.techStack.frontend,
+    parsed.techStack.backend,
+    parsed.techStack.database,
+    parsed.techStack.hosting,
   ].filter(Boolean);
 
   if (parts.length > 0) return parts.join(", ");
-  if (parsed.summary && parsed.summary !== "No summary provided") {
-    return parsed.summary.slice(0, 400);
-  }
   return "";
 }
 
-function cleanStackText(text: string): string {
-  return text
-    .replace(/^[\s\-*•]+/gm, "")
-    .replace(/\n+/g, " ")
-    .replace(/\s+/g, " ")
+function cleanStackFieldValue(raw: string): string | null {
+  let value = raw
+    .replace(/^[\s\-*•]+/, "")
+    .replace(/\*\*/g, "")
+    .replace(/^["'`]|["'`]$/g, "")
     .trim();
+
+  if (value.length > 120) {
+    value = value.split(/[.!?\n]/)[0]?.trim() ?? value.slice(0, 120);
+  }
+
+  const lower = value.toLowerCase();
+  if (
+    !value ||
+    lower === "none" ||
+    lower === "unknown" ||
+    lower === "n/a" ||
+    lower === "not specified"
+  ) {
+    return null;
+  }
+
+  if (
+    /^(this app|the app|it is|a web app|an app)\b/i.test(value) &&
+    value.length > 50
+  ) {
+    return null;
+  }
+
+  return value;
 }
 
-/** Stack summary for "Ask your AI tool" prompts — PILLAR 1, first paragraph, or tool fallback. */
+function extractLabeledValue(section: string, pattern: RegExp): string | null {
+  const match = section.match(pattern);
+  if (!match?.[1]?.trim()) return null;
+  return cleanStackFieldValue(match[1]);
+}
+
+function extractPillar1Section(raw: string): string {
+  const match = raw.match(
+    /(?:^|\n)#+\s*PILLAR\s*1(?:\s*[—\-–]\s*IDENTITY)?[^\n]*\n([\s\S]*?)(?=\n#+\s*PILLAR\s*(?:[2-9]|[IVXLC]+)\b|\n##\s*PILLAR\s*[2-9]|\Z)/i
+  );
+  return match?.[1]?.trim() ?? "";
+}
+
+function extractStackFields(section: string): string[] {
+  const frontend = extractLabeledValue(
+    section,
+    /(?:^|\n)[\s\-*•]*(?:frontend\s*(?:framework)?|primary language and frameworks(?: with exact versions)?)[:\s—–-]+([^\n]+)/i
+  );
+  const backend = extractLabeledValue(
+    section,
+    /(?:^|\n)[\s\-*•]*backend[:\s—–-]+([^\n]+)/i
+  );
+  const database = extractLabeledValue(
+    section,
+    /(?:^|\n)[\s\-*•]*database[:\s—–-]+([^\n]+)/i
+  );
+  const hosting = extractLabeledValue(
+    section,
+    /(?:^|\n)[\s\-*•]*hosting(?:\s*platforms?(?:\s*used)?)?[:\s—–-]+([^\n]+)/i
+  );
+
+  return [frontend, backend, database, hosting].filter(
+    (part): part is string => Boolean(part)
+  );
+}
+
+/** Stack summary for "Ask your AI tool" prompts — tech stack only, never analysis text. */
 export function extractStackSummaryFromDiscovery(
   discoveryResponse: string | null | undefined,
   tool: string
@@ -182,43 +243,23 @@ export function extractStackSummaryFromDiscovery(
   const raw = discoveryResponse?.trim();
   if (!raw) return fallback;
 
-  const pillar1Match = raw.match(
-    /##\s*PILLAR\s*1\s*[—\-–]\s*IDENTITY\s*([\s\S]*?)(?=##\s*PILLAR|\Z)/i
-  );
-  if (pillar1Match?.[1]?.trim()) {
-    const section = cleanStackText(pillar1Match[1]);
-    if (section.length > 20) return section.slice(0, 400);
+  const pillar1 = extractPillar1Section(raw);
+  if (pillar1) {
+    const pillarParts = extractStackFields(pillar1);
+    if (pillarParts.length > 0) {
+      return pillarParts.join(", ");
+    }
   }
 
-  const structured = formatStackSummary(parseDiscoveryResponse(raw));
-  if (structured.length > 0) return structured;
-
-  const beforeNextPillar = raw.split(/\n##\s*PILLAR/i)[0]?.trim() ?? raw;
-  const firstParagraph = beforeNextPillar
-    .split(/\n\s*\n/)
-    .map((paragraph) => paragraph.trim())
-    .find(
-      (paragraph) =>
-        paragraph.length > 30 &&
-        !paragraph.startsWith("You are a code") &&
-        !paragraph.startsWith("Just answer")
-    );
-  if (firstParagraph) {
-    return cleanStackText(firstParagraph).slice(0, 400);
+  const labeledParts = extractStackFields(raw);
+  if (labeledParts.length > 0) {
+    return labeledParts.join(", ");
   }
 
-  const lines = raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(
-      (line) =>
-        line.length > 0 &&
-        !line.startsWith("#") &&
-        !line.startsWith("You are") &&
-        !line.startsWith("Just answer")
-    );
-  if (lines.length > 0) {
-    return cleanStackText(lines.slice(0, 8).join(" ")).slice(0, 400);
+  const parsed = parseDiscoveryResponse(raw);
+  const structured = formatStackSummary(parsed);
+  if (structured.length > 0) {
+    return structured;
   }
 
   return fallback;
