@@ -20,7 +20,7 @@ const nextConfig = {
           {
             key: "Content-Security-Policy",
             value:
-              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https://*.supabase.co https://api.github.com https://api.osv.dev https://api.anthropic.com https://*.sentry.io https://sentry.io; img-src 'self' data: https:; font-src 'self' data:;",
+              "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://*.supabase.co https://api.github.com https://api.osv.dev https://api.anthropic.com https://*.sentry.io https://sentry.io; img-src 'self' data: https:; font-src 'self' data:;",
           },
         ],
       },
